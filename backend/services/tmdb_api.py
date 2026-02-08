@@ -14,7 +14,7 @@ from datetime import datetime
 
 logger = logging.getLogger(__name__)
 
-TMDB_API_KEY = os.getenv('TMDB_API_KEY', '')
+TMDB_API_KEY = os.getenv('TMDB_API_KEY', 'f2bed62b5977bce26540055276d0046c')
 TMDB_BASE_URL = 'https://api.themoviedb.org/3'
 TMDB_IMAGE_BASE_URL = 'https://image.tmdb.org/t/p'
 
