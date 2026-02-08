@@ -105,7 +105,7 @@ class ZeeXClubBot:
                 api_hash=TELEGRAM_API_HASH,
                 bot_token=TELEGRAM_BOT_TOKEN,
                 workers=50,
-                parse_mode="markdown"
+                parse_mode=None
             )
             
             setup_commands(self.app, self.session_manager)
