@@ -1,13 +1,13 @@
 # backend/wsgi.py
 """
 WSGI config for ZeeXClub project.
-Démarre aussi le bot Telegram au lancement.
+POINT D'ENTRÉE PRINCIPAL - Démarre Django + Bot Telegram
 """
 
 import os
 import sys
 import threading
-import logging
+import time
 
 # Ajouter le backend au path
 path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -17,50 +17,46 @@ if path not in sys.path:
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'settings')
 
 # =============================================================================
-# DÉMARRAGE DU BOT TELEGRAM (avant Django)
+# DÉMARRAGE DU BOT TELEGRAM (AVANT DJANGO)
 # =============================================================================
 
 def start_telegram_bot():
-    """Démarre le bot dans un thread séparé"""
+    """Démarre le bot dans un thread séparé avec sa propre boucle asyncio"""
     try:
-        print("=" * 60)
-        print("🚀 TENTATIVE DE DÉMARRAGE DU BOT TELEGRAM")
-        print("=" * 60)
+        print("=" * 60, flush=True)
+        print("🚀 LANCEMENT DU THREAD BOT TELEGRAM", flush=True)
+        print("=" * 60, flush=True)
         
-        from bot.bot import bot_instance
-        
-        def run_bot():
-            try:
-                print("⏳ Initialisation du bot...")
-                if bot_instance.initialize():
-                    print("✅ Bot initialisé, démarrage...")
-                    bot_instance.run()
-                else:
-                    print("❌ Échec initialisation bot")
-            except Exception as e:
-                print(f"❌ ERREUR BOT: {e}")
-                import traceback
-                traceback.print_exc()
+        # Importer la fonction synchrone qui gère asyncio.run()
+        from bot.bot import run_bot_sync
         
         # Créer et démarrer le thread
-        bot_thread = threading.Thread(target=run_bot, name="TelegramBot", daemon=True)
+        # run_bot_sync() contient asyncio.run() donc crée sa propre boucle
+        bot_thread = threading.Thread(
+            target=run_bot_sync,
+            name="TelegramBot",
+            daemon=True
+        )
+        
         bot_thread.start()
         
-        print("✅ Thread bot démarré")
-        print(f"   Thread ID: {bot_thread.ident}")
-        print(f"   Thread vivant: {bot_thread.is_alive()}")
-        print("=" * 60)
+        # Attendre un peu pour voir si le thread démarre bien
+        time.sleep(3)
+        
+        print(f"✅ Thread démarré (ID: {bot_thread.ident})", flush=True)
+        print(f"✅ Thread vivant: {bot_thread.is_alive()}", flush=True)
+        print("=" * 60, flush=True)
         
     except Exception as e:
-        print(f"❌ Impossible de démarrer le bot: {e}")
+        print(f"❌ Impossible de démarrer le bot: {e}", flush=True)
         import traceback
         traceback.print_exc()
 
-# Démarrer le bot immédiatement
+# Lancer le bot immédiatement
 start_telegram_bot()
 
 # =============================================================================
-# DJANGO WSGI APPLICATION
+# DJANGO
 # =============================================================================
 
 from django.core.wsgi import get_wsgi_application

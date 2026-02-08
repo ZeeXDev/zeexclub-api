@@ -64,7 +64,7 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'corsheaders',
     'rest_framework',
-    'api.apps.ApiConfig',  # ← Utilise ApiConfig pour démarrer le bot
+    'api',  # ← Utilise ApiConfig pour démarrer le bot
 ]
 
 # =============================================================================

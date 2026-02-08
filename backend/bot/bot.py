@@ -1,13 +1,13 @@
 # backend/bot/bot.py
 """
 Bot Telegram ZeeXClub - Point d'entrée principal
-Gestionnaire de contenu vidéo via Pyrogram
+Gestionnaire de contenu vidéo via Pyrogram - VERSION ASYNC
 """
 
 import logging
 import sys
 import os
-import time
+import asyncio
 
 # Ajouter le parent au path pour les imports
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -52,8 +52,8 @@ class ZeeXClubBot:
         self.session_manager = SessionManager()
         self._running = False
         
-    def initialize(self):
-        """Initialise le client Pyrogram"""
+    async def initialize(self):
+        """Initialise le client Pyrogram (VERSION ASYNC)"""
         try:
             # Valider la configuration avant démarrage
             errors = validate_config()
@@ -108,12 +108,13 @@ class ZeeXClubBot:
         except:
             pass
     
-    def run(self):
+    async def run(self):
         """
-        Démarre le bot (bloquant, à exécuter dans un thread)
+        Démarre le bot (VERSION ASYNC COMPLÈTE)
         """
         if not self.app:
-            if not self.initialize():
+            initialized = await self.initialize()
+            if not initialized:
                 logger.error("❌ Impossible d'initialiser le bot")
                 return
         
@@ -122,17 +123,16 @@ class ZeeXClubBot:
         
         try:
             # Démarrer le client
-            self.app.start()
+            await self.app.start()
             self._running = True
             
-            logger.info("✅ Bot connecté à Telegram!")
+            logger.info("=" * 50)
+            logger.info("✅ BOT CONNECTÉ À TELEGRAM!")
             logger.info("⏳ En attente de messages...")
             logger.info("=" * 50)
             
-            # Boucle infinie pour garder le thread en vie
-            # Utiliser une boucle avec sleep pour permettre l'interruption
-            while self._running:
-                time.sleep(1)
+            # Garder le bot en vie avec idle()
+            await idle()
                 
         except KeyboardInterrupt:
             logger.info("🛑 Arrêt demandé (KeyboardInterrupt)")
@@ -142,38 +142,40 @@ class ZeeXClubBot:
             self._running = False
             try:
                 if self.app:
-                    self.app.stop()
+                    await self.app.stop()
                     logger.info("🛑 Bot arrêté proprement")
             except Exception as e:
                 logger.error(f"❌ Erreur lors de l'arrêt: {e}")
     
-    def stop(self):
+    async def stop(self):
         """Arrête le bot proprement"""
         logger.info("🛑 Arrêt du bot demandé...")
         self._running = False
-    
-    async def start_async(self):
-        """Démarre le bot de manière asynchrone (pour intégration avancée)"""
-        if not self.app:
-            if not self.initialize():
-                return False
-        
-        await self.app.start()
-        self._running = True
-        logger.info("✅ Bot démarré (mode async)")
-        return True
-    
-    async def stop_async(self):
-        """Arrête le bot proprement (mode async)"""
-        if self.app and self._running:
-            await self.app.stop()
-            self._running = False
-            logger.info("🛑 Bot arrêté")
 
 
 # Instance globale du bot (singleton)
 bot_instance = ZeeXClubBot()
 
+
+def run_bot_sync():
+    """
+    Point d'entrée synchrone pour démarrer le bot.
+    Utilise asyncio.run() pour créer une boucle d'événements propre.
+    """
+    try:
+        print("=" * 60, flush=True)
+        print("🚀 DÉMARRAGE DU BOT TELEGRAM ZeeXClub", flush=True)
+        print("=" * 60, flush=True)
+        
+        # asyncio.run() crée une nouvelle boucle d'événements et la ferme proprement
+        asyncio.run(bot_instance.run())
+        
+    except Exception as e:
+        print(f"❌ ERREUR FATALE: {e}", flush=True)
+        import traceback
+        traceback.print_exc()
+
+
 # Point d'entrée pour exécution directe
 if __name__ == "__main__":
-    bot_instance.run()
+    run_bot_sync()
