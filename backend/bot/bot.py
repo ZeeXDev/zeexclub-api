@@ -1,15 +1,17 @@
 # backend/bot/bot.py
 """
-Bot Telegram ZeeXClub - Point d'entrée principal
-Gestionnaire de contenu vidéo via Pyrogram - VERSION ASYNC
+Bot Telegram ZeeXClub - VERSION WEB SERVICE
+Tourne avec un serveur HTTP factice pour Render
 """
 
 import logging
 import sys
 import os
 import asyncio
+import threading
+from http.server import HTTPServer, BaseHTTPRequestHandler
 
-# Ajouter le parent au path pour les imports
+# Ajouter le parent au path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from pyrogram import Client, filters, idle
@@ -28,24 +30,56 @@ from bot.commands import setup_commands
 from bot.handlers import setup_handlers
 from bot.sessions import SessionManager
 
-# Configuration du logging
+# Logging
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    handlers=[
-        logging.StreamHandler(sys.stdout),
-        logging.FileHandler('bot.log', encoding='utf-8')
-    ]
+    handlers=[logging.StreamHandler(sys.stdout)]
 )
 
 logger = logging.getLogger(__name__)
 
 
+# =============================================================================
+# SERVEUR HTTP FACTICE (pour Render)
+# =============================================================================
+
+class HealthHandler(BaseHTTPRequestHandler):
+    """Handler simple pour health check Render"""
+    
+    def do_GET(self):
+        self.send_response(200)
+        self.send_header('Content-type', 'application/json')
+        self.end_headers()
+        self.wfile.write(b'{"status": "ok", "service": "zeexclub-bot"}')
+    
+    def log_message(self, format, *args):
+        # Silence les logs HTTP
+        pass
+
+
+def start_health_server(port=10000):
+    """Démarre un serveur HTTP minimal pour le health check"""
+    try:
+        server = HTTPServer(('0.0.0.0', port), HealthHandler)
+        logger.info(f"🌐 Serveur health check démarré sur le port {port}")
+        
+        # Tourne dans un thread séparé
+        thread = threading.Thread(target=server.serve_forever, daemon=True)
+        thread.start()
+        
+        return server
+    except Exception as e:
+        logger.error(f"❌ Erreur serveur health: {e}")
+        return None
+
+
+# =============================================================================
+# BOT TELEGRAM
+# =============================================================================
+
 class ZeeXClubBot:
-    """
-    Classe principale du bot ZeeXClub
-    Gère l'initialisation, les commandes et les sessions
-    """
+    """Bot principal"""
     
     def __init__(self):
         self.app = None
@@ -53,22 +87,18 @@ class ZeeXClubBot:
         self._running = False
         
     async def initialize(self):
-        """Initialise le client Pyrogram (VERSION ASYNC)"""
+        """Initialise le client Pyrogram"""
         try:
-            # Valider la configuration avant démarrage
             errors = validate_config()
             if errors:
-                logger.error("❌ Configuration invalide:")
                 for error in errors:
                     logger.error(f"  - {error}")
                 return False
             
-            # Vérifier que les credentials sont présents
             if not all([TELEGRAM_API_ID, TELEGRAM_API_HASH, TELEGRAM_BOT_TOKEN]):
-                logger.error("❌ Credentials Telegram manquants!")
+                logger.error("❌ Credentials manquants!")
                 return False
             
-            # Créer le client Pyrogram
             self.app = Client(
                 "zeexclub_bot",
                 api_id=TELEGRAM_API_ID,
@@ -78,104 +108,84 @@ class ZeeXClubBot:
                 parse_mode="markdown"
             )
             
-            # Configurer les commandes et handlers
             setup_commands(self.app, self.session_manager)
             setup_handlers(self.app, self.session_manager)
             
-            # Handler pour les erreurs globales
             error_handler = MessageHandler(
                 self._error_handler,
                 filters.all & filters.private
             )
             self.app.add_handler(error_handler, group=-1)
             
-            logger.info("✅ Bot initialisé avec succès")
+            logger.info("✅ Bot initialisé")
             return True
             
         except Exception as e:
-            logger.error(f"❌ Erreur initialisation bot: {e}", exc_info=True)
+            logger.error(f"❌ Erreur init: {e}")
             return False
     
     async def _error_handler(self, client, message, exception):
-        """Handler global pour capturer les erreurs"""
-        logger.error(f"❌ Erreur non capturée: {exception}", exc_info=True)
-        try:
-            if hasattr(message, 'reply'):
-                await message.reply(
-                    "❌ **Une erreur est survenue**\n\n"
-                    "L'administrateur a été notifié. Réessayez plus tard."
-                )
-        except:
-            pass
+        logger.error(f"❌ Erreur: {exception}")
     
     async def run(self):
-        """
-        Démarre le bot (VERSION ASYNC COMPLÈTE)
-        """
+        """Démarre le bot"""
         if not self.app:
-            initialized = await self.initialize()
-            if not initialized:
-                logger.error("❌ Impossible d'initialiser le bot")
+            if not await self.initialize():
                 return
         
-        logger.info("🚀 Démarrage du bot ZeeXClub...")
-        logger.info(f"👥 Admins autorisés: {ADMIN_IDS}")
+        logger.info("🚀 Démarrage bot...")
+        logger.info(f"👥 Admins: {ADMIN_IDS}")
         
         try:
-            # Démarrer le client
             await self.app.start()
             self._running = True
             
             logger.info("=" * 50)
-            logger.info("✅ BOT CONNECTÉ À TELEGRAM!")
+            logger.info("✅ BOT CONNECTÉ!")
             logger.info("⏳ En attente de messages...")
             logger.info("=" * 50)
             
-            # Garder le bot en vie avec idle()
-            await idle()
+            # Boucle infinie propre (pas idle())
+            while self._running:
+                await asyncio.sleep(1)
                 
-        except KeyboardInterrupt:
-            logger.info("🛑 Arrêt demandé (KeyboardInterrupt)")
         except Exception as e:
-            logger.error(f"❌ Erreur fatale: {e}", exc_info=True)
+            logger.error(f"❌ Erreur: {e}")
         finally:
             self._running = False
             try:
-                if self.app:
-                    await self.app.stop()
-                    logger.info("🛑 Bot arrêté proprement")
-            except Exception as e:
-                logger.error(f"❌ Erreur lors de l'arrêt: {e}")
-    
-    async def stop(self):
-        """Arrête le bot proprement"""
-        logger.info("🛑 Arrêt du bot demandé...")
-        self._running = False
+                await self.app.stop()
+            except:
+                pass
 
 
-# Instance globale du bot (singleton)
+# Instance globale
 bot_instance = ZeeXClubBot()
 
 
-def run_bot_sync():
-    """
-    Point d'entrée synchrone pour démarrer le bot.
-    Utilise asyncio.run() pour créer une boucle d'événements propre.
-    """
+async def main():
+    """Fonction principale async"""
+    # Démarrer le serveur health check
+    start_health_server()
+    
+    # Démarrer le bot
+    await bot_instance.run()
+
+
+def run():
+    """Point d'entrée synchrone"""
     try:
         print("=" * 60, flush=True)
-        print("🚀 DÉMARRAGE DU BOT TELEGRAM ZeeXClub", flush=True)
+        print("🚀 ZeeXClub BOT - Web Service Mode", flush=True)
         print("=" * 60, flush=True)
         
-        # asyncio.run() crée une nouvelle boucle d'événements et la ferme proprement
-        asyncio.run(bot_instance.run())
+        asyncio.run(main())
         
     except Exception as e:
-        print(f"❌ ERREUR FATALE: {e}", flush=True)
+        print(f"❌ FATAL: {e}", flush=True)
         import traceback
         traceback.print_exc()
 
 
-# Point d'entrée pour exécution directe
 if __name__ == "__main__":
-    run_bot_sync()
+    run()
