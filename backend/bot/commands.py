@@ -1,4 +1,3 @@
-# backend/bot/commands.py
 """
 Commandes du bot Telegram ZeeXClub
 Toutes les commandes disponibles pour les administrateurs
@@ -6,7 +5,7 @@ Toutes les commandes disponibles pour les administrateurs
 
 import logging
 from typing import Optional
-from pyrogram import Client, filters
+from pyrogram import Client, filters, enums
 from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton, Message
 from config import ADMIN_IDS
 from bot.sessions import SessionManager
@@ -61,7 +60,7 @@ def setup_commands(app: Client, session_manager: SessionManager):
 /create Marvel /addf Marvel /add Marvel/Avengers Puis envoyez vos fichiers vidéo!
         """
         
-        await message.reply(welcome_text, disable_web_page_preview=True)
+        await message.reply(welcome_text, disable_web_page_preview=True, parse_mode=enums.ParseMode.MARKDOWN)
     
     # =========================================================================
     # COMMANDE HELP
@@ -146,7 +145,7 @@ Pour les séries, utilisez ces formats dans la caption:
 💡 **Besoin d'aide?** Contactez le développeur.
         """
         
-        await message.reply(help_text, disable_web_page_preview=True)
+        await message.reply(help_text, disable_web_page_preview=True, parse_mode=enums.ParseMode.MARKDOWN)
     
     # =========================================================================
     # COMMANDE CREATE
@@ -161,9 +160,10 @@ Pour les séries, utilisez ces formats dans la caption:
             
             if len(command_parts) < 2:
                 await message.reply(
-                    "❌ **Usage incorrect**\n\n"
-                    "Utilisez: `/create <nom_dossier>`\n"
-                    "Exemple: `/create Stranger Things`"
+                    "❌ **Usage incorrect**\\n\\n"
+                    "Utilisez: `/create <nom_dossier>`\\n"
+                    "Exemple: `/create Stranger Things`",
+                    parse_mode=enums.ParseMode.MARKDOWN
                 )
                 return
             
@@ -172,17 +172,18 @@ Pour les séries, utilisez ces formats dans la caption:
             # Valider le nom
             is_valid, error_msg = is_valid_folder_name(folder_name)
             if not is_valid:
-                await message.reply(f"❌ **Nom invalide:** {error_msg}")
+                await message.reply(f"❌ **Nom invalide:** {error_msg}", parse_mode=enums.ParseMode.MARKDOWN)
                 return
             
             # Vérifier si le dossier existe déjà (racine uniquement)
             existing = supabase_manager.get_folder_by_name(folder_name, parent_id=None)
             if existing:
                 await message.reply(
-                    f"⚠️ **Le dossier existe déjà!**\n\n"
-                    f"📁 `{escape_markdown(folder_name)}`\n"
-                    f"🆔 `{existing[0]['id']}`\n\n"
-                    f"Utilisez `/view {escape_markdown(folder_name)}` pour le voir."
+                    f"⚠️ **Le dossier existe déjà!**\\n\\n"
+                    f"📁 `{escape_markdown(folder_name)}`\\n"
+                    f"🆔 `{existing[0]['id']}`\\n\\n"
+                    f"Utilisez `/view {escape_markdown(folder_name)}` pour le voir.",
+                    parse_mode=enums.ParseMode.MARKDOWN
                 )
                 return
             
@@ -191,20 +192,21 @@ Pour les séries, utilisez ces formats dans la caption:
             
             if result:
                 await message.reply(
-                    f"✅ **Dossier créé avec succès!**\n\n"
-                    f"📁 Nom: `{escape_markdown(folder_name)}`\n"
-                    f"🆔 ID: `{result['id']}`\n\n"
-                    f"▶️ Prochaines étapes:\n"
-                    f"• `/addf {escape_markdown(folder_name)}` pour ajouter des sous-dossiers\n"
-                    f"• `/add {escape_markdown(folder_name)}` pour ajouter des vidéos directement"
+                    f"✅ **Dossier créé avec succès!**\\n\\n"
+                    f"📁 Nom: `{escape_markdown(folder_name)}`\\n"
+                    f"🆔 ID: `{result['id']}`\\n\\n"
+                    f"▶️ Prochaines étapes:\\n"
+                    f"• `/addf {escape_markdown(folder_name)}` pour ajouter des sous-dossiers\\n"
+                    f"• `/add {escape_markdown(folder_name)}` pour ajouter des vidéos directement",
+                    parse_mode=enums.ParseMode.MARKDOWN
                 )
                 logger.info(f"Dossier créé par {message.from_user.id}: {folder_name}")
             else:
-                await message.reply("❌ **Erreur lors de la création du dossier**")
+                await message.reply("❌ **Erreur lors de la création du dossier**", parse_mode=enums.ParseMode.MARKDOWN)
                 
         except Exception as e:
             logger.error(f"Erreur commande create: {e}", exc_info=True)
-            await message.reply(f"❌ **Erreur interne:** `{str(e)[:100]}`")
+            await message.reply(f"❌ **Erreur interne:** `{str(e)[:100]}`", parse_mode=enums.ParseMode.MARKDOWN)
     
     # =========================================================================
     # COMMANDE ADDF (ADD FOLDER)
@@ -218,10 +220,11 @@ Pour les séries, utilisez ces formats dans la caption:
             
             if len(command_parts) < 2:
                 await message.reply(
-                    "❌ **Usage incorrect**\n\n"
-                    "Utilisez: `/addf <dossier_parent>`\n"
-                    "Exemple: `/addf Stranger Things`\n\n"
-                    "Le bot vous demandera ensuite le nom du sous-dossier."
+                    "❌ **Usage incorrect**\\n\\n"
+                    "Utilisez: `/addf <dossier_parent>`\\n"
+                    "Exemple: `/addf Stranger Things`\\n\\n"
+                    "Le bot vous demandera ensuite le nom du sous-dossier.",
+                    parse_mode=enums.ParseMode.MARKDOWN
                 )
                 return
             
@@ -243,14 +246,16 @@ Pour les séries, utilisez ces formats dans la caption:
                     ]
                     
                     await message.reply(
-                        f"❌ Dossier `{escape_markdown(parent_name)}` introuvable.\n\n"
+                        f"❌ Dossier `{escape_markdown(parent_name)}` introuvable.\\n\\n"
                         f"🔍 **Vouliez-vous dire:**",
-                        reply_markup=InlineKeyboardMarkup(buttons)
+                        reply_markup=InlineKeyboardMarkup(buttons),
+                        parse_mode=enums.ParseMode.MARKDOWN
                     )
                 else:
                     await message.reply(
-                        f"❌ Dossier `{escape_markdown(parent_name)}` introuvable.\n\n"
-                        f"Utilisez `/docs` pour voir la liste des dossiers."
+                        f"❌ Dossier `{escape_markdown(parent_name)}` introuvable.\\n\\n"
+                        f"Utilisez `/docs` pour voir la liste des dossiers.",
+                        parse_mode=enums.ParseMode.MARKDOWN
                     )
                 return
             
@@ -263,9 +268,10 @@ Pour les séries, utilisez ces formats dans la caption:
                 ]
                 
                 await message.reply(
-                    "🔍 **Plusieurs dossiers trouvés:**\n"
+                    "🔍 **Plusieurs dossiers trouvés:**\\n"
                     "Sélectionnez le bon:",
-                    reply_markup=InlineKeyboardMarkup(buttons)
+                    reply_markup=InlineKeyboardMarkup(buttons),
+                    parse_mode=enums.ParseMode.MARKDOWN
                 )
                 return
             
@@ -280,19 +286,20 @@ Pour les séries, utilisez ces formats dans la caption:
             })
             
             await message.reply(
-                f"📂 **Dossier parent sélectionné:**\n"
-                f"`{escape_markdown(parent['folder_name'])}`\n\n"
-                f"💬 **Envoyez maintenant le nom du sous-dossier:**\n"
-                f"Exemples:\n"
-                f"• `Saison 1`\n"
-                f"• `Épisodes spéciaux`\n"
-                f"• `Partie 1`\n\n"
-                f"❌ Envoyez `/cancel` pour annuler"
+                f"📂 **Dossier parent sélectionné:**\\n"
+                f"`{escape_markdown(parent['folder_name'])}`\\n\\n"
+                f"💬 **Envoyez maintenant le nom du sous-dossier:**\\n"
+                f"Exemples:\\n"
+                f"• `Saison 1`\\n"
+                f"• `Épisodes spéciaux`\\n"
+                f"• `Partie 1`\\n\\n"
+                f"❌ Envoyez `/cancel` pour annuler",
+                parse_mode=enums.ParseMode.MARKDOWN
             )
             
         except Exception as e:
             logger.error(f"Erreur commande addf: {e}", exc_info=True)
-            await message.reply(f"❌ **Erreur interne:** `{str(e)[:100]}`")
+            await message.reply(f"❌ **Erreur interne:** `{str(e)[:100]}`", parse_mode=enums.ParseMode.MARKDOWN)
     
     # =========================================================================
     # COMMANDE ADD (MODE AJOUT VIDÉOS)
@@ -306,14 +313,15 @@ Pour les séries, utilisez ces formats dans la caption:
             
             if len(command_parts) < 2:
                 await message.reply(
-                    "❌ **Usage incorrect**\n\n"
-                    "Utilisez: `/add <chemin>`\n\n"
-                    "**Formats acceptés:**\n"
-                    "• `/add Dossier` (dossier racine)\n"
-                    "• `/add Parent/Sous-dossier` (chemin complet)\n\n"
-                    "**Exemples:**\n"
-                    "• `/add Breaking Bad`\n"
-                    "• `/add Breaking Bad/Saison 1`"
+                    "❌ **Usage incorrect**\\n\\n"
+                    "Utilisez: `/add <chemin>`\\n\\n"
+                    "**Formats acceptés:**\\n"
+                    "• `/add Dossier` (dossier racine)\\n"
+                    "• `/add Parent/Sous-dossier` (chemin complet)\\n\\n"
+                    "**Exemples:**\\n"
+                    "• `/add Breaking Bad`\\n"
+                    "• `/add Breaking Bad/Saison 1`",
+                    parse_mode=enums.ParseMode.MARKDOWN
                 )
                 return
             
@@ -321,7 +329,7 @@ Pour les séries, utilisez ces formats dans la caption:
             parent_name, subfolder_name = parse_folder_path(path)
             
             if not parent_name:
-                await message.reply("❌ Chemin invalide")
+                await message.reply("❌ Chemin invalide", parse_mode=enums.ParseMode.MARKDOWN)
                 return
             
             # Rechercher le dossier parent
@@ -329,8 +337,9 @@ Pour les séries, utilisez ces formats dans la caption:
             
             if not parents:
                 await message.reply(
-                    f"❌ Dossier `{escape_markdown(parent_name)}` introuvable.\n"
-                    f"Créez-le d'abord avec `/create {escape_markdown(parent_name)}`"
+                    f"❌ Dossier `{escape_markdown(parent_name)}` introuvable.\\n"
+                    f"Créez-le d'abord avec `/create {escape_markdown(parent_name)}`",
+                    parse_mode=enums.ParseMode.MARKDOWN
                 )
                 return
             
@@ -362,10 +371,11 @@ Pour les séries, utilisez ces formats dans la caption:
                         )])
                         
                         await message.reply(
-                            f"❌ Sous-dossier `{escape_markdown(subfolder_name)}` introuvable dans `{escape_markdown(parent_name)}`.\n\n"
-                            f"🔍 **Existants:** {', '.join(suggestions)}\n\n"
+                            f"❌ Sous-dossier `{escape_markdown(subfolder_name)}` introuvable dans `{escape_markdown(parent_name)}`.\\n\\n"
+                            f"🔍 **Existants:** {', '.join(suggestions)}\\n\\n"
                             f"Ou créez-en un nouveau:",
-                            reply_markup=InlineKeyboardMarkup(buttons)
+                            reply_markup=InlineKeyboardMarkup(buttons),
+                            parse_mode=enums.ParseMode.MARKDOWN
                         )
                         return
                 
@@ -386,29 +396,29 @@ Pour les séries, utilisez ces formats dans la caption:
             })
             
             status_text = (
-                f"✅ **Mode ajout activé**\n\n"
-                f"📁 **Dossier:** `{escape_markdown(path)}`\n"
+                f"✅ **Mode ajout activé**\\n\\n"
+                f"📁 **Dossier:** `{escape_markdown(path)}`\\n"
             )
             
             if existing_videos:
-                status_text += f"📊 **Contenu existant:** {len(existing_videos)} vidéos\n"
+                status_text += f"📊 **Contenu existant:** {len(existing_videos)} vidéos\\n"
             
             status_text += (
-                f"\n📤 **Envoyez vos fichiers vidéo maintenant**\n\n"
-                f"💡 **Conseils pour les captions:**\n"
-                f"• `E01` ou `Ep 1` → Épisode 1\n"
-                f"• `S01E05` → Saison 1, Épisode 5\n"
-                f"• `S2 Ep 3 - Titre` → Avec titre personnalisé\n\n"
-                f"⏹️ **Terminer:** `/done`\n"
+                f"\\n📤 **Envoyez vos fichiers vidéo maintenant**\\n\\n"
+                f"💡 **Conseils pour les captions:**\\n"
+                f"• `E01` ou `Ep 1` → Épisode 1\\n"
+                f"• `S01E05` → Saison 1, Épisode 5\\n"
+                f"• `S2 Ep 3 - Titre` → Avec titre personnalisé\\n\\n"
+                f"⏹️ **Terminer:** `/done`\\n"
                 f"❌ **Annuler:** `/cancel`"
             )
             
-            await message.reply(status_text)
+            await message.reply(status_text, parse_mode=enums.ParseMode.MARKDOWN)
             logger.info(f"Mode ajout activé par {message.from_user.id} dans {path}")
             
         except Exception as e:
             logger.error(f"Erreur commande add: {e}", exc_info=True)
-            await message.reply(f"❌ **Erreur interne:** `{str(e)[:100]}`")
+            await message.reply(f"❌ **Erreur interne:** `{str(e)[:100]}`", parse_mode=enums.ParseMode.MARKDOWN)
     
     # =========================================================================
     # COMMANDE DONE
@@ -421,8 +431,9 @@ Pour les séries, utilisez ces formats dans la caption:
         
         if not session or session.get('mode') != 'adding_files':
             await message.reply(
-                "⚠️ **Aucun mode ajout actif**\n\n"
-                "Utilisez d'abord `/add <dossier>` pour commencer."
+                "⚠️ **Aucun mode ajout actif**\\n\\n"
+                "Utilisez d'abord `/add <dossier>` pour commencer.",
+                parse_mode=enums.ParseMode.MARKDOWN
             )
             return
         
@@ -437,25 +448,25 @@ Pour les séries, utilisez ces formats dans la caption:
         
         # Message de confirmation
         summary = (
-            f"✅ **Mode ajout terminé**\n\n"
-            f"📁 **Dossier:** `{escape_markdown(folder_path)}`\n"
-            f"📊 **Résumé:**\n"
-            f"  • Vidéos ajoutées: **{files_added}**\n"
-            f"  • Taille totale: **{format_file_size(total_size)}**\n"
+            f"✅ **Mode ajout terminé**\\n\\n"
+            f"📁 **Dossier:** `{escape_markdown(folder_path)}`\\n"
+            f"📊 **Résumé:**\\n"
+            f"  • Vidéos ajoutées: **{files_added}**\\n"
+            f"  • Taille totale: **{format_file_size(total_size)}**\\n"
         )
         
         if errors:
-            summary += f"\n⚠️ **Erreurs ({len(errors)}):**\n"
+            summary += f"\\n⚠️ **Erreurs ({len(errors)}):**\\n"
             for error in errors[:5]:  # Limiter à 5 erreurs
-                summary += f"  • `{escape_markdown(str(error)[:50])}`\n"
+                summary += f"  • `{escape_markdown(str(error)[:50])}`\\n"
         
         summary += (
-            f"\n▶️ **Prochaines étapes:**\n"
-            f"• `/view {escape_markdown(folder_path)}` pour voir le contenu\n"
+            f"\\n▶️ **Prochaines étapes:**\\n"
+            f"• `/view {escape_markdown(folder_path)}` pour voir le contenu\\n"
             f"• `/add {escape_markdown(folder_path)}` pour ajouter plus de vidéos"
         )
         
-        await message.reply(summary)
+        await message.reply(summary, parse_mode=enums.ParseMode.MARKDOWN)
         logger.info(f"Mode ajout terminé par {message.from_user.id}: {files_added} fichiers")
     
     # =========================================================================
@@ -468,7 +479,7 @@ Pour les séries, utilisez ces formats dans la caption:
         session = session_manager.get(message.from_user.id)
         
         if not session:
-            await message.reply("ℹ️ Aucune opération à annuler.")
+            await message.reply("ℹ️ Aucune opération à annuler.", parse_mode=enums.ParseMode.MARKDOWN)
             return
         
         mode = session.get('mode', 'inconnu')
@@ -481,9 +492,10 @@ Pour les séries, utilisez ces formats dans la caption:
         }
         
         await message.reply(
-            f"❌ **Opération annulée**\n\n"
-            f"Mode: {mode_names.get(mode, mode)}\n"
-            f"Les données non sauvegardées ont été perdues."
+            f"❌ **Opération annulée**\\n\\n"
+            f"Mode: {mode_names.get(mode, mode)}\\n"
+            f"Les données non sauvegardées ont été perdues.",
+            parse_mode=enums.ParseMode.MARKDOWN
         )
     
     # =========================================================================
@@ -498,11 +510,12 @@ Pour les séries, utilisez ces formats dans la caption:
             
             if len(command_parts) < 2:
                 await message.reply(
-                    "❌ **Usage incorrect**\n\n"
-                    "Utilisez: `/view <nom_dossier>`\n"
-                    "Exemples:\n"
-                    "• `/view Stranger Things`\n"
-                    "• `/view Stranger Things/Saison 1`"
+                    "❌ **Usage incorrect**\\n\\n"
+                    "Utilisez: `/view <nom_dossier>`\\n"
+                    "Exemples:\\n"
+                    "• `/view Stranger Things`\\n"
+                    "• `/view Stranger Things/Saison 1`",
+                    parse_mode=enums.ParseMode.MARKDOWN
                 )
                 return
             
@@ -515,7 +528,7 @@ Pour les séries, utilisez ces formats dans la caption:
                 # Trouver parent
                 parents = supabase_manager.get_folder_by_name(parent_name)
                 if not parents:
-                    await message.reply(f"❌ Dossier `{escape_markdown(parent_name)}` introuvable")
+                    await message.reply(f"❌ Dossier `{escape_markdown(parent_name)}` introuvable", parse_mode=enums.ParseMode.MARKDOWN)
                     return
                 
                 parent = parents[0]
@@ -529,7 +542,8 @@ Pour les séries, utilisez ces formats dans la caption:
                 
                 if not subfolder:
                     await message.reply(
-                        f"❌ Sous-dossier `{escape_markdown(sub_name)}` introuvable dans `{escape_markdown(parent_name)}`"
+                        f"❌ Sous-dossier `{escape_markdown(sub_name)}` introuvable dans `{escape_markdown(parent_name)}`",
+                        parse_mode=enums.ParseMode.MARKDOWN
                     )
                     return
                 
@@ -551,13 +565,15 @@ Pour les séries, utilisez ces formats dans la caption:
                         ]
                         
                         await message.reply(
-                            f"❌ Dossier `{escape_markdown(search_query)}` introuvable.\n\n"
+                            f"❌ Dossier `{escape_markdown(search_query)}` introuvable.\\n\\n"
                             f"🔍 **Suggestions:**",
-                            reply_markup=InlineKeyboardMarkup(buttons)
+                            reply_markup=InlineKeyboardMarkup(buttons),
+                            parse_mode=enums.ParseMode.MARKDOWN
                         )
                     else:
                         await message.reply(
-                            f"❌ Aucun dossier trouvé pour `{escape_markdown(search_query)}`"
+                            f"❌ Aucun dossier trouvé pour `{escape_markdown(search_query)}`",
+                            parse_mode=enums.ParseMode.MARKDOWN
                         )
                     return
                 
@@ -574,31 +590,32 @@ Pour les séries, utilisez ces formats dans la caption:
                     ]
                     
                     await message.reply(
-                        f"🔍 **{len(folders)} dossiers trouvés:**\n"
+                        f"🔍 **{len(folders)} dossiers trouvés:**\\n"
                         f"Sélectionnez le bon:",
-                        reply_markup=InlineKeyboardMarkup(buttons)
+                        reply_markup=InlineKeyboardMarkup(buttons),
+                        parse_mode=enums.ParseMode.MARKDOWN
                     )
                     
         except Exception as e:
             logger.error(f"Erreur commande view: {e}", exc_info=True)
-            await message.reply(f"❌ **Erreur interne:** `{str(e)[:100]}`")
+            await message.reply(f"❌ **Erreur interne:** `{str(e)[:100]}`", parse_mode=enums.ParseMode.MARKDOWN)
     
     async def display_folder_details(message: Message, folder_id: str):
         """Affiche les détails d'un dossier"""
         folder = supabase_manager.get_folder_by_id(folder_id)
         if not folder:
-            await message.reply("❌ Dossier introuvable")
+            await message.reply("❌ Dossier introuvable", parse_mode=enums.ParseMode.MARKDOWN)
             return
         
         videos = supabase_manager.get_videos_by_folder(folder_id)
         
         # Construire le message
-        header = f"📁 **{escape_markdown(folder['folder_name'])}**\n\n"
+        header = f"📁 **{escape_markdown(folder['folder_name'])}**\\n\\n"
         
         if videos:
             header += create_video_summary(videos)
         else:
-            header += "📂 **Dossier vide**\n\n"
+            header += "📂 **Dossier vide**\\n\\n"
             header += "Utilisez `/add` pour ajouter des vidéos."
         
         # Boutons d'action
@@ -617,7 +634,7 @@ Pour les séries, utilisez ces formats dans la caption:
             InlineKeyboardButton("🗑️ Supprimer", callback_data=f"delete_folder:{folder_id}")
         ])
         
-        await message.reply(header, reply_markup=InlineKeyboardMarkup(buttons))
+        await message.reply(header, reply_markup=InlineKeyboardMarkup(buttons), parse_mode=enums.ParseMode.MARKDOWN)
     
     # =========================================================================
     # COMMANDE DOCS (LISTE DES DOSSIERS)
@@ -631,16 +648,17 @@ Pour les séries, utilisez ces formats dans la caption:
             
             if not folders:
                 await message.reply(
-                    "📂 **Aucun dossier créé**\n\n"
-                    "Commencez par créer un dossier:\n"
-                    "`/create Mon Film`"
+                    "📂 **Aucun dossier créé**\\n\\n"
+                    "Commencez par créer un dossier:\\n"
+                    "`/create Mon Film`",
+                    parse_mode=enums.ParseMode.MARKDOWN
                 )
                 return
             
             total_videos = sum(f.get('videos', [{}])[0].get('count', 0) for f in folders)
             
             lines = [
-                f"📚 **LISTE DES DOSSIERS** ({len(folders)} total, {total_videos} vidéos)\n",
+                f"📚 **LISTE DES DOSSIERS** ({len(folders)} total, {total_videos} vidéos)\\n",
                 "┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓"
             ]
             
@@ -661,7 +679,7 @@ Pour les séries, utilisez ces formats dans la caption:
                 lines.append(f"┃ ... et {len(folders) - 20} autres dossiers")
             
             lines.append("┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛")
-            lines.append("\n💡 Cliquez sur un dossier pour voir les détails")
+            lines.append("\\n💡 Cliquez sur un dossier pour voir les détails")
             
             # Créer des boutons pour les 10 premiers dossiers
             buttons = []
@@ -673,13 +691,14 @@ Pour les séries, utilisez ces formats dans la caption:
                 )])
             
             await message.reply(
-                "\n".join(lines),
-                reply_markup=InlineKeyboardMarkup(buttons) if buttons else None
+                "\\n".join(lines),
+                reply_markup=InlineKeyboardMarkup(buttons) if buttons else None,
+                parse_mode=enums.ParseMode.MARKDOWN
             )
             
         except Exception as e:
             logger.error(f"Erreur commande docs: {e}", exc_info=True)
-            await message.reply(f"❌ **Erreur interne:** `{str(e)[:100]}`")
+            await message.reply(f"❌ **Erreur interne:** `{str(e)[:100]}`", parse_mode=enums.ParseMode.MARKDOWN)
     
     # =========================================================================
     # COMMANDE STATS
@@ -725,9 +744,8 @@ Pour les séries, utilisez ces formats dans la caption:
 • Votre ID: `{message.from_user.id}`
             """
             
-            await message.reply(stats_text)
+            await message.reply(stats_text, parse_mode=enums.ParseMode.MARKDOWN)
             
         except Exception as e:
             logger.error(f"Erreur commande stats: {e}", exc_info=True)
-            await message.reply(f"❌ **Erreur interne:** `{str(e)[:100]}`")
-
+            await message.reply(f"❌ **Erreur interne:** `{str(e)[:100]}`", parse_mode=enums.ParseMode.MARKDOWN)
