@@ -14,7 +14,7 @@ from http.server import HTTPServer, BaseHTTPRequestHandler
 # Ajouter le parent au path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from pyrogram import Client, filters, idle
+from pyrogram import Client, filters, idle, enums
 from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton, CallbackQuery
 from pyrogram.handlers import MessageHandler
 from pyrogram.errors import FloodWait, UserNotParticipant, ChatAdminRequired
@@ -105,8 +105,7 @@ class ZeeXClubBot:
                 api_hash=TELEGRAM_API_HASH,
                 bot_token=TELEGRAM_BOT_TOKEN,
                 workers=50,
-                parse_mode=None
-            )
+                parse_mode=enums.ParseMode.MARKDOWN)
             
             setup_commands(self.app, self.session_manager)
             setup_handlers(self.app, self.session_manager)
