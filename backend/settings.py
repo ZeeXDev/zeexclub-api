@@ -47,29 +47,34 @@ from config import (
 # CONFIGURATION DJANGO
 # =============================================================================
 
-# Clé secrète
 SECRET_KEY = SECRET_KEY
-
-# Mode debug
 DEBUG = DEBUG
-
-# Hôtes autorisés
 ALLOWED_HOSTS = ALLOWED_HOSTS
 
 # =============================================================================
-# APPLICATIONS
+# APPLICATIONS (avec ApiConfig pour démarrer le bot)
 # =============================================================================
 
-INSTALLED_APPS = CONFIG_INSTALLED_APPS
+INSTALLED_APPS = [
+    'django.contrib.admin',
+    'django.contrib.auth',
+    'django.contrib.contenttypes',
+    'django.contrib.sessions',
+    'django.contrib.messages',
+    'django.contrib.staticfiles',
+    'corsheaders',
+    'rest_framework',
+    'api.apps.ApiConfig',  # ← Utilise ApiConfig pour démarrer le bot
+]
 
 # =============================================================================
 # MIDDLEWARE (ajout des middlewares custom)
 # =============================================================================
 
 MIDDLEWARE = [
-    'api.middleware.CORSMiddleware',      # CORS custom
-    'api.middleware.LoggingMiddleware',    # Logging
-    'api.middleware.SupabaseAuthMiddleware',  # Auth Supabase
+    'api.middleware.CORSMiddleware',
+    'api.middleware.LoggingMiddleware',
+    'api.middleware.SupabaseAuthMiddleware',
 ] + CONFIG_MIDDLEWARE
 
 # =============================================================================
