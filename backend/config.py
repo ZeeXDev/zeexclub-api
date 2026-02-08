@@ -59,6 +59,14 @@ FILEMOON_API_KEY = os.getenv('FILEMOON_API_KEY', '109610tm5s00oygchhhs3u')
 FILEMOON_BASE_URL = 'https://api.byse.sx/'
 
 # =============================================================================
+# CONFIGURATION TMDB (AJOUTÉ)
+# =============================================================================
+
+TMDB_API_KEY = os.getenv('TMDB_API_KEY', 'f2bed62b5977bce26540055276d0046c')
+TMDB_BASE_URL = 'https://api.themoviedb.org/3'
+TMDB_IMAGE_BASE_URL = 'https://image.tmdb.org/t/p'
+
+# =============================================================================
 # CONFIGURATION DJANGO
 # =============================================================================
 

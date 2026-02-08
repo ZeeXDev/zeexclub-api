@@ -5,6 +5,8 @@ Endpoints pour le frontend et le streaming
 """
 
 import logging
+import asyncio
+import threading
 from django.http import StreamingHttpResponse, JsonResponse, Http404
 from django.views.decorators.csrf import csrf_exempt
 from django.utils.decorators import method_decorator
@@ -13,15 +15,47 @@ from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import AllowAny, IsAuthenticated
-from pyrogram import Client
-import asyncio
-import io
 
-from config import STREAM_CHUNK_SIZE, TELEGRAM_API_ID, TELEGRAM_API_HASH, TELEGRAM_BOT_TOKEN
+from config import (
+    TELEGRAM_API_ID, 
+    TELEGRAM_API_HASH, 
+    TELEGRAM_BOT_TOKEN,
+    STREAM_CHUNK_SIZE
+)
 from services.stream_handler import get_file_id_from_stream_id, validate_stream_token
 from database.supabase_client import supabase_manager
 
 logger = logging.getLogger(__name__)
+
+# Client Pyrogram global pour le streaming (singleton)
+_stream_client = None
+_stream_lock = threading.Lock()
+
+def get_stream_client():
+    """Singleton pour le client de streaming"""
+    global _stream_client
+    if _stream_client is None:
+        with _stream_lock:
+            if _stream_client is None:
+                try:
+                    from pyrogram import Client
+                    _stream_client = Client(
+                        "zeex_streamer",
+                        api_id=TELEGRAM_API_ID,
+                        api_hash=TELEGRAM_API_HASH,
+                        bot_token=TELEGRAM_BOT_TOKEN,
+                        in_memory=True,
+                        no_updates=True
+                    )
+                    # Démarrer le client de manière synchrone
+                    loop = asyncio.new_event_loop()
+                    asyncio.set_event_loop(loop)
+                    loop.run_until_complete(_stream_client.start())
+                    logger.info("✅ Client de streaming Pyrogram démarré")
+                except Exception as e:
+                    logger.error(f"❌ Erreur démarrage client streaming: {e}")
+                    raise
+    return _stream_client
 
 # =============================================================================
 # ENDPOINTS DE STREAMING
@@ -30,68 +64,73 @@ logger = logging.getLogger(__name__)
 class StreamVideoView(APIView):
     """
     Vue pour streamer une vidéo depuis Telegram
-    URL: /stream/<stream_id>
+    URL: /api/stream/<stream_id>/
     """
     permission_classes = [AllowAny]
     
     def get(self, request, stream_id):
         """Gère le streaming d'une vidéo"""
         try:
-            # Valider le token
+            # Valider le format du stream_id
             if not validate_stream_token(stream_id):
-                return Response({'error': 'Invalid stream ID'}, status=400)
+                return Response({'error': 'Invalid stream ID format'}, status=400)
             
             # Récupérer le file_id
             file_id = get_file_id_from_stream_id(stream_id)
             if not file_id:
                 raise Http404("Stream not found")
             
-            # Récupérer les infos de la vidéo depuis Supabase
+            # Récupérer les infos de la vidéo
             video = supabase_manager.get_video_by_file_id(file_id)
             
-            # Télécharger et streamer depuis Telegram
-            return self._stream_from_telegram(file_id, video)
+            logger.info(f"📺 Streaming demandé: {stream_id[:8]}... -> {video.get('title', 'Unknown')[:30] if video else 'Unknown'}...")
             
+            return self._stream_video(file_id, video)
+            
+        except Http404:
+            raise
         except Exception as e:
-            logger.error(f"❌ Erreur streaming {stream_id}: {e}")
-            return Response({'error': str(e)}, status=500)
+            logger.error(f"❌ Erreur streaming {stream_id}: {e}", exc_info=True)
+            return Response({'error': 'Streaming error'}, status=500)
     
-    def _stream_from_telegram(self, file_id, video_info):
+    def _stream_video(self, file_id, video_info):
         """Stream le fichier depuis Telegram"""
         try:
-            # Créer un client temporaire pour télécharger
-            # Note: En production, utilisez une session persistante ou un worker dédié
-            loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(loop)
+            client = get_stream_client()
             
-            async def download():
-                client = Client(
-                    "stream_worker",
-                    api_id=TELEGRAM_API_ID,
-                    api_hash=TELEGRAM_API_HASH,
-                    bot_token=TELEGRAM_BOT_TOKEN,
-                    in_memory=True
-                )
-                
-                await client.start()
-                
+            # Générateur asynchrone pour les chunks
+            async def chunk_generator():
                 try:
-                    # Télécharger par chunks
+                    # Télécharger par chunks depuis Telegram
                     async for chunk in client.stream_media(file_id, limit=STREAM_CHUNK_SIZE):
                         yield chunk
+                except Exception as e:
+                    logger.error(f"❌ Erreur pendant le streaming: {e}")
+                    raise
+            
+            # Wrapper synchrone pour Django
+            def sync_generator():
+                loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(loop)
+                
+                try:
+                    async_gen = chunk_generator()
+                    while True:
+                        try:
+                            chunk = loop.run_until_complete(async_gen.__anext__())
+                            yield chunk
+                        except StopAsyncIteration:
+                            break
                 finally:
-                    await client.stop()
+                    loop.close()
             
-            # Créer le générateur de streaming
-            generator = download()
-            
-            # Déterminer le content type
+            # Déterminer le content-type
             content_type = 'video/mp4'
             if video_info and video_info.get('mime_type'):
                 content_type = video_info['mime_type']
             
             response = StreamingHttpResponse(
-                generator,
+                sync_generator(),
                 content_type=content_type
             )
             
@@ -101,15 +140,16 @@ class StreamVideoView(APIView):
             
             if video_info:
                 if video_info.get('file_size'):
-                    response['Content-Length'] = video_info['file_size']
+                    response['Content-Length'] = str(video_info['file_size'])
                 if video_info.get('title'):
-                    response['Content-Disposition'] = f'inline; filename="{video_info["title"]}.mp4"'
+                    safe_title = video_info['title'].replace('"', '\\"')[:50]
+                    response['Content-Disposition'] = f'inline; filename="{safe_title}.mp4"'
             
             return response
             
         except Exception as e:
-            logger.error(f"❌ Erreur download Telegram: {e}")
-            raise
+            logger.error(f"❌ Erreur _stream_video: {e}", exc_info=True)
+            return Response({'error': 'Stream failed'}, status=500)
 
 
 # =============================================================================
@@ -220,7 +260,7 @@ def get_all_folders(request):
 def get_watch_history(request):
     """Récupère l'historique de visionnage de l'utilisateur"""
     try:
-        user_id = request.user.id  # Supabase auth user id
+        user_id = request.user.id
         completed = request.query_params.get('completed', 'false').lower() == 'true'
         
         history = supabase_manager.get_watch_history(user_id, completed_only=completed)
@@ -338,7 +378,7 @@ def post_comment(request):
 # =============================================================================
 
 @api_view(['POST'])
-@permission_classes([AllowAny])  # Ou IsAuthenticated selon vos besoins
+@permission_classes([AllowAny])
 def enrich_folder(request, folder_id):
     """Déclenche l'enrichissement TMDB d'un dossier"""
     try:
@@ -372,7 +412,6 @@ def search_tmdb(request):
         
         year_int = int(year) if year else None
         
-        # Exécuter la coroutine de manière synchrone
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
         results = loop.run_until_complete(search_and_suggest(query, year_int))

@@ -13,7 +13,9 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from pyrogram import Client, filters, idle
 from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton, CallbackQuery
+from pyrogram.handlers import MessageHandler
 from pyrogram.errors import FloodWait, UserNotParticipant, ChatAdminRequired
+
 from config import (
     TELEGRAM_API_ID,
     TELEGRAM_API_HASH,
@@ -65,20 +67,20 @@ class ZeeXClubBot:
                 api_id=TELEGRAM_API_ID,
                 api_hash=TELEGRAM_API_HASH,
                 bot_token=TELEGRAM_BOT_TOKEN,
-                workers=50,  # Nombre de workers pour gérer les requêtes concurrentes
-                parse_mode="markdown"  # Mode parsing par défaut
+                workers=50,
+                parse_mode="markdown"
             )
             
             # Configurer les commandes et handlers
             setup_commands(self.app, self.session_manager)
             setup_handlers(self.app, self.session_manager)
             
-            # Handler pour les erreurs non capturées
-            self.app.add_handler(
-                filters.all & filters.private,
+            # Handler pour les erreurs non capturées (CORRIGÉ)
+            error_handler = MessageHandler(
                 self._error_handler,
-                group=-1  # Priorité haute
+                filters.all & filters.private
             )
+            self.app.add_handler(error_handler, group=-1)
             
             logger.info("✅ Bot initialisé avec succès")
             return True
@@ -87,12 +89,12 @@ class ZeeXClubBot:
             logger.error(f"❌ Erreur initialisation bot: {e}")
             return False
     
-    async def _error_handler(self, client, update, exception):
+    async def _error_handler(self, client, message, exception):
         """Handler global pour capturer les erreurs"""
         logger.error(f"❌ Erreur non capturée: {exception}", exc_info=True)
         try:
-            if hasattr(update, 'message') and update.message:
-                await update.message.reply(
+            if hasattr(message, 'reply'):
+                await message.reply(
                     "❌ **Une erreur est survenue**\n\n"
                     "L'administrateur a été notifié. Réessayez plus tard."
                 )
