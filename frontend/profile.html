@@ -1,0 +1,62 @@
+<!-- frontend/profile.html -->
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Profil - ZeeXClub</title>
+    <link rel="stylesheet" href="css/main.css">
+    <link rel="stylesheet" href="css/profile.css">
+    <link rel="stylesheet" href="css/bottom-nav.css">
+
+</head>
+<body>
+    <header>
+        <div class="header-container">
+            <a href="index.html" class="logo">
+                <img src="/img/logo.png" alt="ZeeXClub">
+            </a>
+            <nav>
+                <a href="index.html">Accueil</a>
+                <a href="catalog.html">Catalogue</a>
+            </nav>
+        </div>
+    </header>
+
+    <main class="profile-page">
+        <div class="profile-header">
+            <div class="profile-avatar">
+                <img id="profile-avatar" src="/img/default-avatar.png" alt="Avatar">
+            </div>
+            <div class="profile-info">
+                <h1 id="profile-name">Chargement...</h1>
+                <p id="profile-email">...</p>
+                <button id="btn-logout" class="btn-outline">Déconnexion</button>
+            </div>
+        </div>
+
+        <div id="user-stats" class="stats-grid">
+            <!-- Injecté par JS -->
+        </div>
+
+        <div class="profile-sections">
+            <section class="profile-section">
+                <h2>Historique de visionnage</h2>
+                <div id="history-list" class="history-list">
+                    <!-- Injecté par JS -->
+                </div>
+            </section>
+
+            <section class="profile-section">
+                <h2>Ma Liste</h2>
+                <div id="watchlist-grid" class="movie-grid">
+                    <!-- Injecté par JS -->
+                </div>
+            </section>
+        </div>
+    </main>
+
+    <script type="module" src="/js/profile.js"></script>
+    <script type="module" src="/js/bottom-nav.js"></script>
+</body>
+</html>

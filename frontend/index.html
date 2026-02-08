@@ -1,0 +1,671 @@
+<!-- frontend/index.html - Version enrichie 800+ lignes -->
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ZeeXClub - Streaming de Films et Séries en HD</title>
+    <meta name="description" content="Regardez vos films et séries préférés en streaming HD sur ZeeXClub. Catalogue complet, nouveautés chaque jour.">
+    <meta name="keywords" content="streaming, films, séries, HD, gratuit, en ligne">
+    <meta name="theme-color" content="#0A0A0A">
+    
+    <!-- Open Graph -->
+    <meta property="og:title" content="ZeeXClub - Streaming HD">
+    <meta property="og:description" content="Films et séries en streaming illimité">
+    <meta property="og:type" content="website">
+    
+    <!-- Favicon -->
+    <link rel="icon" type="image/x-icon" href="/img/favicon.ico">
+    <link rel="apple-touch-icon" href="img/logo.png">
+    
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Bebas+Neue&display=swap" rel="stylesheet">
+    
+    <!-- CSS -->
+    <link rel="stylesheet" href="css/main.css">
+    <link rel="stylesheet" href="css/responsive.css">
+    <link rel="stylesheet" href="css/bottom-nav.css">
+
+    
+    <style>
+        /* Styles critiques inline pour performance */
+        .hero-loader {
+            position: fixed;
+            inset: 0;
+            background: #0A0A0A;
+            z-index: 99999;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: opacity 0.5s ease, visibility 0.5s ease;
+        }
+        .hero-loader.hidden {
+            opacity: 0;
+            visibility: hidden;
+        }
+        .loader-logo {
+            width: 200px;
+            height: 200px;
+            animation: pulse-glow 2s ease-in-out infinite;
+        }
+        @keyframes pulse-glow {
+            0%, 100% { transform: scale(1); filter: drop-shadow(0 0 20px #E31E24); }
+            50% { transform: scale(1.1); filter: drop-shadow(0 0 40px #00A7E1); }
+        }
+    </style>
+</head>
+<body>
+    <!-- Loader initial -->
+    <div class="hero-loader" id="page-loader">
+        <svg class="loader-logo" viewBox="0 0 200 200" fill="none">
+            <defs>
+                <linearGradient id="logoGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" style="stop-color:#E31E24"/>
+                    <stop offset="100%" style="stop-color:#00A7E1"/>
+                </linearGradient>
+            </defs>
+            <path d="M40 100 L80 40 L120 100 L160 40" stroke="url(#logoGrad)" stroke-width="8" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                <animate attributeName="stroke-dasharray" from="0,400" to="400,0" dur="2s" fill="freeze"/>
+            </path>
+            <text x="50%" y="75%" text-anchor="middle" fill="white" font-family="Bebas Neue" font-size="48" letter-spacing="4">
+                ZEEX
+                <animate attributeName="opacity" from="0" to="1" dur="0.5s" begin="1.5s" fill="freeze"/>
+            </text>
+            <text x="50%" y="88%" text-anchor="middle" fill="#00A7E1" font-family="Bebas Neue" font-size="32" letter-spacing="8">
+                CLUB
+                <animate attributeName="opacity" from="0" to="1" dur="0.5s" begin="1.8s" fill="freeze"/>
+            </text>
+        </svg>
+    </div>
+
+    <!-- Navigation -->
+    <header class="main-header" id="main-header">
+        <div class="header-backdrop"></div>
+        <div class="header-content">
+            <a href="index.html" class="logo-link" aria-label="ZeeXClub Accueil">
+                <div class="logo-container">
+                    <svg class="logo-svg" viewBox="0 0 120 40" aria-hidden="true">
+                        <defs>
+                            <linearGradient id="headerGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+                                <stop offset="0%" style="stop-color:#E31E24"/>
+                                <stop offset="100%" style="stop-color:#00A7E1"/>
+                            </linearGradient>
+                        </defs>
+                        <text x="0" y="32" fill="url(#headerGrad)" font-family="Bebas Neue" font-size="28" font-weight="bold" letter-spacing="2">ZEEX</text>
+                        <text x="58" y="32" fill="#00A7E1" font-family="Bebas Neue" font-size="28" letter-spacing="2">CLUB</text>
+                        <circle cx="110" cy="20" r="3" fill="#E31E24">
+                            <animate attributeName="r" values="3;5;3" dur="2s" repeatCount="indefinite"/>
+                            <animate attributeName="opacity" values="1;0.5;1" dur="2s" repeatCount="indefinite"/>
+                        </circle>
+                    </svg>
+                </div>
+            </a>
+
+            <nav class="primary-nav" aria-label="Navigation principale">
+                <ul class="nav-list">
+                    <li class="nav-item">
+                        <a href="index.html" class="nav-link active" data-text="Accueil">
+                            <span class="nav-text">Accueil</span>
+                            <span class="nav-hover" aria-hidden="true">Accueil</span>
+                            <svg class="nav-underline" viewBox="0 0 100 10" preserveAspectRatio="none">
+                                <path d="M0 5 Q 50 10 100 5" stroke="#E31E24" stroke-width="2" fill="none" stroke-dasharray="100" stroke-dashoffset="100" class="underline-path"/>
+                            </svg>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="catalog.html" class="nav-link" data-text="Catalogue">
+                            <span class="nav-text">Catalogue</span>
+                            <span class="nav-hover" aria-hidden="true">Catalogue</span>
+                            <svg class="nav-underline" viewBox="0 0 100 10" preserveAspectRatio="none">
+                                <path d="M0 5 Q 50 10 100 5" stroke="#E31E24" stroke-width="2" fill="none" stroke-dasharray="100" stroke-dashoffset="100" class="underline-path"/>
+                            </svg>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="trending.html" class="nav-link" data-text="Tendances">
+                            <span class="nav-text">Tendances</span>
+                            <span class="nav-hover" aria-hidden="true">Tendances</span>
+                            <span class="trending-badge" aria-label="Nouveau">HOT</span>
+                            <svg class="nav-underline" viewBox="0 0 100 10" preserveAspectRatio="none">
+                                <path d="M0 5 Q 50 10 100 5" stroke="#E31E24" stroke-width="2" fill="none" stroke-dasharray="100" stroke-dashoffset="100" class="underline-path"/>
+                            </svg>
+                        </a>
+                    </li>
+                    <li class="nav-item" data-auth style="display:none;">
+                        <a href="mylist.html" class="nav-link" data-text="Ma Liste">
+                            <span class="nav-text">Ma Liste</span>
+                            <span class="nav-hover" aria-hidden="true">Ma Liste</span>
+                            <span class="list-count" id="nav-list-count">0</span>
+                            <svg class="nav-underline" viewBox="0 0 100 10" preserveAspectRatio="none">
+                                <path d="M0 5 Q 50 10 100 5" stroke="#E31E24" stroke-width="2" fill="none" stroke-dasharray="100" stroke-dashoffset="100" class="underline-path"/>
+                            </svg>
+                        </a>
+                    </li>
+                </ul>
+            </nav>
+
+            <div class="header-actions">
+                <div class="search-wrapper">
+                    <button class="search-toggle" id="search-toggle" aria-label="Ouvrir la recherche">
+                        <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+                            <circle cx="11" cy="11" r="8" stroke="currentColor" stroke-width="2" fill="none"/>
+                            <path d="M21 21l-4.35-4.35" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                            <animateTransform attributeName="transform" type="rotate" from="0 11 11" to="360 11 11" dur="3s" repeatCount="indefinite" begin="mouseenter" end="mouseleave"/>
+                        </svg>
+                    </button>
+                    <div class="search-panel" id="search-panel">
+                        <form class="search-form" action="catalog.html" method="GET">
+                            <input type="search" name="q" placeholder="Rechercher un film, une série..." autocomplete="off" class="search-input"/>
+                            <button type="submit" class="search-submit">
+                                <svg viewBox="0 0 24 24" class="icon">
+                                    <path d="M5 12h14M12 5l7 7-7 7" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+                                </svg>
+                            </button>
+                        </form>
+                        <div class="search-suggestions" id="search-suggestions"></div>
+                    </div>
+                </div>
+
+                <button class="notifications-btn" data-auth style="display:none;" aria-label="Notifications">
+                    <svg class="icon" viewBox="0 0 24 24">
+                        <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+                        <path d="M13.73 21a2 2 0 0 1-3.46 0" stroke="currentColor" stroke-width="2" fill="none"/>
+                        <circle cx="18" cy="8" r="3" fill="#E31E24" class="notification-dot"/>
+                    </svg>
+                </button>
+
+                <div class="user-menu-wrapper" data-auth style="display:none;">
+                    <button class="user-menu-toggle" id="user-menu-toggle" aria-haspopup="true" aria-expanded="false">
+                        <img data-user-avatar src="/img/default-avatar.png" alt="" class="user-avatar-small"/>
+                        <span class="user-name-short" data-user-name>User</span>
+                        <svg class="dropdown-arrow" viewBox="0 0 24 24" aria-hidden="true">
+                            <path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                    </button>
+                    <nav class="user-dropdown" aria-label="Menu utilisateur">
+                        <div class="dropdown-header">
+                            <img data-user-avatar src="/img/default-avatar.png" alt="" class="dropdown-avatar"/>
+                            <div class="dropdown-user-info">
+                                <strong data-user-name>Utilisateur</strong>
+                                <span data-user-email>email@example.com</span>
+                            </div>
+                        </div>
+                        <div class="dropdown-divider"></div>
+                        <a href="profile.html" class="dropdown-item">
+                            <svg viewBox="0 0 24 24" class="icon"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" stroke="currentColor" stroke-width="2" fill="none"/><circle cx="12" cy="7" r="4" stroke="currentColor" stroke-width="2" fill="none"/></svg>
+                            Profil
+                        </a>
+                        <a href="mylist.html" class="dropdown-item">
+                            <svg viewBox="0 0 24 24" class="icon"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" stroke="currentColor" stroke-width="2" fill="none"/></svg>
+                            Ma Liste
+                        </a>
+                        <a href="profile.html#settings" class="dropdown-item">
+                            <svg viewBox="0 0 24 24" class="icon"><circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="2" fill="none"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" stroke="currentColor" stroke-width="2" fill="none"/></svg>
+                            Paramètres
+                        </a>
+                        <div class="dropdown-divider"></div>
+                        <button class="dropdown-item logout-item" onclick="signOut()">
+                            <svg viewBox="0 0 24 24" class="icon"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/><polyline points="16 17 21 12 16 7" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/><line x1="21" y1="12" x2="9" y2="12" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                            Déconnexion
+                        </button>
+                    </nav>
+                </div>
+
+                <a href="login.html" class="btn-login-header" data-no-auth>
+                    <span class="btn-text">Connexion</span>
+                    <span class="btn-shine"></span>
+                </a>
+            </div>
+        </div>
+    </header>
+
+    <!-- Contenu principal -->
+    <main class="main-content">
+        <!-- Section Hero avec slider -->
+        <section class="hero-section" aria-label="Contenu en vedette">
+            <div class="hero-slider" id="hero-slider">
+                <div class="hero-slides-container" id="hero-slides">
+                    <!-- Slide 1 -->
+                    <article class="hero-slide active" data-index="0">
+                        <div class="hero-backdrop">
+                            <img src="/img/dune2.jpg" alt="" class="hero-image" loading="eager"/>
+                            <div class="hero-vignette"></div>
+                            <div class="hero-grain"></div>
+                        </div>
+                        <div class="hero-content-wrapper">
+                            <div class="hero-content">
+                                <div class="hero-badges">
+                                    <span class="badge badge-premium">
+                                        <svg viewBox="0 0 24 24" class="badge-icon"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" fill="currentColor"/></svg>
+                                        Top 10
+                                    </span>
+                                    <span class="badge badge-new">Nouveauté</span>
+                                    <span class="badge badge-4k">4K HDR</span>
+                                </div>
+                                <h1 class="hero-title">
+                                    <span class="title-word" style="animation-delay: 0.1s">DUNE</span>
+                                    <span class="title-word title-part" style="animation-delay: 0.2s">PARTIE 2</span>
+                                </h1>
+                                <p class="hero-synopsis">
+                                    Paul Atreides s'allie à Chani et aux Fremen pour mener la révolte contre ceux qui ont détruit sa famille. 
+                                    Face à un choix entre l'amour de sa vie et le destin de l'univers, il doit empêcher un avenir terrible.
+                                </p>
+                                <div class="hero-meta">
+                                    <span class="meta-year">2024</span>
+                                    <span class="meta-duration">2h 46min</span>
+                                    <span class="meta-rating">
+                                        <svg viewBox="0 0 24 24" class="star-icon"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" fill="currentColor"/></svg>
+                                        8.9
+                                    </span>
+                                    <span class="meta-genres">Science-Fiction, Aventure, Drame</span>
+                                </div>
+                                <div class="hero-actions">
+                                    <a href="player.html?id=dune-2" class="btn-hero btn-hero-primary">
+                                        <span class="btn-icon">
+                                            <svg viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3" fill="currentColor"/></svg>
+                                        </span>
+                                        <span class="btn-text">Regarder maintenant</span>
+                                        <span class="btn-ripple"></span>
+                                    </a>
+                                    <button class="btn-hero btn-hero-secondary" onclick="showTrailer('dune-2')">
+                                        <span class="btn-icon">
+                                            <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2" fill="none"/><polygon points="10 8 16 12 10 16 10 8" fill="currentColor"/></svg>
+                                        </span>
+                                        <span class="btn-text">Bande-annonce</span>
+                                    </button>
+                                    <button class="btn-hero btn-hero-icon" onclick="addToList('dune-2')" aria-label="Ajouter à ma liste">
+                                        <svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><line x1="5" y1="12" x2="19" y2="12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </article>
+
+                    <!-- Slide 2 -->
+                    <article class="hero-slide" data-index="1">
+                        <div class="hero-backdrop">
+                            <img src="/img/loki-s2.jpg" alt="" class="hero-image" loading="lazy"/>
+                            <div class="hero-vignette"></div>
+                            <div class="hero-grain"></div>
+                        </div>
+                        <div class="hero-content-wrapper">
+                            <div class="hero-content">
+                                <div class="hero-badges">
+                                    <span class="badge badge-series">Série</span>
+                                    <span class="badge badge-trending">Tendance</span>
+                                </div>
+                                <h1 class="hero-title">
+                                    <span class="title-word" style="animation-delay: 0.1s">LOKI</span>
+                                    <span class="title-word title-season" style="animation-delay: 0.2s">SAISON 2</span>
+                                </h1>
+                                <p class="hero-synopsis">
+                                    Après les événements de la saison 1, Loki navigue à travers le temps et l'espace 
+                                    pour sauver le TVA et comprendre sa véritable destinée.
+                                </p>
+                                <div class="hero-meta">
+                                    <span class="meta-year">2023</span>
+                                    <span class="meta-episodes">6 épisodes</span>
+                                    <span class="meta-rating">
+                                        <svg viewBox="0 0 24 24" class="star-icon"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" fill="currentColor"/></svg>
+                                        8.2
+                                    </span>
+                                    <span class="meta-genres">Action, Science-Fiction, Fantastique</span>
+                                </div>
+                                <div class="hero-actions">
+                                    <a href="player.html?id=loki-s2-e1" class="btn-hero btn-hero-primary">
+                                        <span class="btn-icon">
+                                            <svg viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3" fill="currentColor"/></svg>
+                                        </span>
+                                        <span class="btn-text">Regarder l'épisode 1</span>
+                                    </a>
+                                    <button class="btn-hero btn-hero-secondary" onclick="showEpisodes('loki-s2')">
+                                        <span class="btn-icon">
+                                            <svg viewBox="0 0 24 24"><line x1="8" y1="6" x2="21" y2="6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><line x1="8" y1="12" x2="21" y2="12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><line x1="8" y1="18" x2="21" y2="18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><line x1="3" y1="6" x2="3.01" y2="6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><line x1="3" y1="12" x2="3.01" y2="12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><line x1="3" y1="18" x2="3.01" y2="18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+                                        </span>
+                                        <span class="btn-text">Tous les épisodes</span>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </article>
+
+                    <!-- Slide 3 -->
+                    <article class="hero-slide" data-index="2">
+                        <div class="hero-backdrop">
+                            <img src="/img/oppenheimer.jpg" alt="" class="hero-image" loading="lazy"/>
+                            <div class="hero-vignette"></div>
+                            <div class="hero-grain"></div>
+                        </div>
+                        <div class="hero-content-wrapper">
+                            <div class="hero-content">
+                                <div class="hero-badges">
+                                    <span class="badge badge-award">Oscar 2024</span>
+                                    <span class="badge badge-biopic">Biopic</span>
+                                </div>
+                                <h1 class="hero-title">
+                                    <span class="title-word" style="animation-delay: 0.1s">OPPENHEIMER</span>
+                                </h1>
+                                <p class="hero-synopsis">
+                                    L'histoire du physicien américain J. Robert Oppenheimer et son rôle dans le développement 
+                                    de la bombe atomique pendant la Seconde Guerre mondiale.
+                                </p>
+                                <div class="hero-meta">
+                                    <span class="meta-year">2023</span>
+                                    <span class="meta-duration">3h 00min</span>
+                                    <span class="meta-rating">
+                                        <svg viewBox="0 0 24 24" class="star-icon"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" fill="currentColor"/></svg>
+                                        8.6
+                                    </span>
+                                    <span class="meta-genres">Drame, Historique, Biopic</span>
+                                </div>
+                                <div class="hero-actions">
+                                    <a href="player.html?id=oppenheimer" class="btn-hero btn-hero-primary">
+                                        <span class="btn-icon">
+                                            <svg viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3" fill="currentColor"/></svg>
+                                        </span>
+                                        <span class="btn-text">Regarder maintenant</span>
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </article>
+                </div>
+
+                <!-- Contrôles du slider -->
+                <div class="hero-controls">
+                    <button class="hero-nav hero-nav-prev" id="hero-prev" aria-label="Précédent">
+                        <svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    </button>
+                    <div class="hero-dots" id="hero-dots">
+                        <button class="hero-dot active" data-index="0" aria-label="Slide 1"></button>
+                        <button class="hero-dot" data-index="1" aria-label="Slide 2"></button>
+                        <button class="hero-dot" data-index="2" aria-label="Slide 3"></button>
+                    </div>
+                    <button class="hero-nav hero-nav-next" id="hero-next" aria-label="Suivant">
+                        <svg viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    </button>
+                </div>
+
+                <!-- Barre de progression -->
+                <div class="hero-progress">
+                    <div class="hero-progress-bar" id="hero-progress"></div>
+                </div>
+            </div>
+
+            <!-- Scroll indicator -->
+            <div class="scroll-indicator">
+                <div class="mouse">
+                    <div class="wheel"></div>
+                </div>
+                <span class="scroll-text">Défiler pour explorer</span>
+            </div>
+        </section>
+
+        <!-- Section Continuer à regarder -->
+        <section class="content-section" id="continue-watching" data-auth style="display:none;" aria-labelledby="continue-title">
+            <div class="section-header">
+                <div class="section-title-wrapper">
+                    <h2 id="continue-title" class="section-title">
+                        <span class="title-icon">
+                            <svg viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3" fill="currentColor"/></svg>
+                        </span>
+                        Continuer à regarder
+                    </h2>
+                    <span class="section-count" id="continue-count">0 titre</span>
+                </div>
+                <a href="profile.html#history" class="section-link">
+                    Voir tout l'historique
+                    <svg viewBox="0 0 24 24" class="link-arrow"><polyline points="9 18 15 12 9 6" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                </a>
+            </div>
+            <div class="content-slider" data-slider="continue">
+                <button class="slider-arrow slider-prev" aria-label="Précédent">
+                    <svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                </button>
+                <div class="slider-track" id="continue-track">
+                    <!-- Injecté par JS -->
+                </div>
+                <button class="slider-arrow slider-next" aria-label="Suivant">
+                    <svg viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                </button>
+            </div>
+        </section>
+
+        <!-- Section Nouveautés -->
+        <section class="content-section" id="new-releases" aria-labelledby="new-title">
+            <div class="section-header">
+                <div class="section-title-wrapper">
+                    <h2 id="new-title" class="section-title">
+                        <span class="title-icon title-icon-pulse">
+                            <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2" fill="none"/><circle cx="12" cy="12" r="3" fill="currentColor"/></svg>
+                        </span>
+                        Nouveautés
+                    </h2>
+                    <span class="section-badge">Cette semaine</span>
+                </div>
+                <div class="section-filters">
+                    <button class="filter-chip active" data-filter="all">Tout</button>
+                    <button class="filter-chip" data-filter="movie">Films</button>
+                    <button class="filter-chip" data-filter="series">Séries</button>
+                </div>
+            </div>
+            <div class="movie-grid" id="new-grid">
+                <!-- Injecté par JS -->
+            </div>
+            <div class="section-footer">
+                <a href="catalog.html?sort=newest" class="btn-load-more">
+                    <span>Voir toutes les nouveautés</span>
+                    <svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><polyline points="19 12 12 19 5 12" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                </a>
+            </div>
+        </section>
+
+        <!-- Section Top 10 -->
+        <section class="content-section section-top" id="top-10" aria-labelledby="top-title">
+            <div class="section-header">
+                <div class="section-title-wrapper">
+                    <h2 id="top-title" class="section-title section-title-glow">
+                        <span class="top-number">10</span>
+                        Top 10 de la semaine
+                    </h2>
+                </div>
+            </div>
+            <div class="top-slider" data-slider="top">
+                <div class="top-track" id="top-track">
+                    <!-- Top 10 avec numéros -->
+                </div>
+            </div>
+        </section>
+
+        <!-- Section Par genre -->
+        <section class="content-section" id="by-genre" aria-labelledby="genre-title">
+            <div class="section-header">
+                <h2 id="genre-title" class="section-title">Explorer par genre</h2>
+            </div>
+            <div class="genre-grid" id="genre-grid">
+                <a href="catalog.html?genre=action" class="genre-card genre-action">
+                    <div class="genre-bg"></div>
+                    <span class="genre-name">Action</span>
+                    <span class="genre-count">245 films</span>
+                </a>
+                <a href="catalog.html?genre=science-fiction" class="genre-card genre-scifi">
+                    <div class="genre-bg"></div>
+                    <span class="genre-name">Science-Fiction</span>
+                    <span class="genre-count">189 films</span>
+                </a>
+                <a href="catalog.html?genre=drame" class="genre-card genre-drama">
+                    <div class="genre-bg"></div>
+                    <span class="genre-name">Drame</span>
+                    <span class="genre-count">412 films</span>
+                </a>
+                <a href="catalog.html?genre=comedie" class="genre-card genre-comedy">
+                    <div class="genre-bg"></div>
+                    <span class="genre-name">Comédie</span>
+                    <span class="genre-count">328 films</span>
+                </a>
+                <a href="catalog.html?genre=horreur" class="genre-card genre-horror">
+                    <div class="genre-bg"></div>
+                    <span class="genre-name">Horreur</span>
+                    <span class="genre-count">156 films</span>
+                </a>
+                <a href="catalog.html?genre=animation" class="genre-card genre-animation">
+                    <div class="genre-bg"></div>
+                    <span class="genre-name">Animation</span>
+                    <span class="genre-count">203 films</span>
+                </a>
+            </div>
+        </section>
+
+        <!-- Section Tendances -->
+        <section class="content-section" id="trending" aria-labelledby="trending-title">
+            <div class="section-header">
+                <div class="section-title-wrapper">
+                    <h2 id="trending-title" class="section-title">
+                        <span class="title-icon title-icon-fire">
+                            <svg viewBox="0 0 24 24"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                        </span>
+                        Tendances actuelles
+                    </h2>
+                </div>
+                <a href="trending.html" class="section-link">
+                    Voir tout
+                    <svg viewBox="0 0 24 24" class="link-arrow"><polyline points="9 18 15 12 9 6" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                </a>
+            </div>
+            <div class="movie-grid" id="trending-grid">
+                <!-- Injecté par JS -->
+            </div>
+        </section>
+
+        <!-- Section Ma liste (si connecté) -->
+        <section class="content-section" id="my-list-section" data-auth style="display:none;" aria-labelledby="list-title">
+            <div class="section-header">
+                <div class="section-title-wrapper">
+                    <h2 id="list-title" class="section-title">
+                        <svg viewBox="0 0 24 24" class="title-icon"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" stroke="currentColor" stroke-width="2" fill="none"/></svg>
+                        Ma liste
+                    </h2>
+                </div>
+                <a href="mylist.html" class="section-link">
+                    Voir tout
+                    <svg viewBox="0 0 24 24" class="link-arrow"><polyline points="9 18 15 12 9 6" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                </a>
+            </div>
+            <div class="content-slider" data-slider="list">
+                <button class="slider-arrow slider-prev" aria-label="Précédent">
+                    <svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                </button>
+                <div class="slider-track" id="list-track">
+                    <!-- Injecté par JS -->
+                </div>
+                <button class="slider-arrow slider-next" aria-label="Suivant">
+                    <svg viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                </button>
+            </div>
+        </section>
+
+        <!-- Newsletter / CTA -->
+        <section class="cta-section" aria-labelledby="cta-title">
+            <div class="cta-backdrop">
+                <div class="cta-gradient"></div>
+            </div>
+            <div class="cta-content">
+                <h2 id="cta-title" class="cta-title">Rejoignez ZeeXClub Premium</h2>
+                <p class="cta-text">Accédez à tout le catalogue en haute définition, sans publicité, sur tous vos appareils.</p>
+                <div class="cta-buttons">
+                    <a href="login.html" class="btn-cta-primary">Commencer gratuitement</a>
+                    <button class="btn-cta-secondary" onclick="showPricing()">Voir les offres</button>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Footer -->
+    <footer class="main-footer">
+        <div class="footer-wave">
+            <svg viewBox="0 0 1440 120" preserveAspectRatio="none">
+                <path d="M0,64 C480,150 960,-20 1440,64 L1440,120 L0,120 Z" fill="#0A0A0A"/>
+            </svg>
+        </div>
+        <div class="footer-content">
+            <div class="footer-brand">
+                <svg class="footer-logo" viewBox="0 0 120 40">
+                    <text x="0" y="32" fill="#E31E24" font-family="Bebas Neue" font-size="28" font-weight="bold" letter-spacing="2">ZEEX</text>
+                    <text x="58" y="32" fill="#00A7E1" font-family="Bebas Neue" font-size="28" letter-spacing="2">CLUB</text>
+                </svg>
+                <p class="footer-tagline">Votre cinéma, partout, tout le temps.</p>
+                <div class="social-links">
+                    <a href="#" class="social-link" aria-label="Twitter">
+                        <svg viewBox="0 0 24 24"><path d="M23 3a10.9 10.9 0 0 1-3.14 1.53 4.48 4.48 0 0 0-7.86 3v1A10.66 10.66 0 0 1 3 4s-4 9 5 13a11.64 11.64 0 0 1-7 2c9 5 20 0 20-11.5a4.5 4.5 0 0 0-.08-.83A7.72 7.72 0 0 0 23 3z" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    </a>
+                    <a href="#" class="social-link" aria-label="Instagram">
+                        <svg viewBox="0 0 24 24"><rect x="2" y="2" width="20" height="20" rx="5" ry="5" stroke="currentColor" stroke-width="2" fill="none"/><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/><line x1="17.5" y1="6.5" x2="17.51" y2="6.5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    </a>
+                    <a href="#" class="social-link" aria-label="Discord">
+                        <svg viewBox="0 0 24 24"><path d="M18 9a5 5 0 0 0-4-2 5 5 0 0 0-4 2" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/><path d="M6 9a5 5 0 0 0 4 2 5 5 0 0 0 4-2" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/><circle cx="8" cy="12" r="1" fill="currentColor"/><circle cx="16" cy="12" r="1" fill="currentColor"/><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    </a>
+                </div>
+            </div>
+            
+            <nav class="footer-nav" aria-label="Navigation pied de page">
+                <div class="footer-column">
+                    <h4>Navigation</h4>
+                    <ul>
+                        <li><a href="index.html">Accueil</a></li>
+                        <li><a href="catalog.html">Catalogue</a></li>
+                        <li><a href="trending.html">Tendances</a></li>
+                        <li><a href="mylist.html">Ma liste</a></li>
+                    </ul>
+                </div>
+                <div class="footer-column">
+                    <h4>Catégories</h4>
+                    <ul>
+                        <li><a href="catalog.html?genre=action">Action</a></li>
+                        <li><a href="catalog.html?genre=comedie">Comédie</a></li>
+                        <li><a href="catalog.html?genre=drame">Drame</a></li>
+                        <li><a href="catalog.html?genre=documentaire">Documentaire</a></li>
+                    </ul>
+                </div>
+                <div class="footer-column">
+                    <h4>Aide</h4>
+                    <ul>
+                        <li><a href="#">FAQ</a></li>
+                        <li><a href="#">Contact</a></li>
+                        <li><a href="#">Signaler un problème</a></li>
+                    </ul>
+                </div>
+                <div class="footer-column">
+                    <h4>Légal</h4>
+                    <ul>
+                        <li><a href="#">Conditions d'utilisation</a></li>
+                        <li><a href="#">Confidentialité</a></li>
+                        <li><a href="#">Cookies</a></li>
+                    </ul>
+                </div>
+            </nav>
+        </div>
+        <div class="footer-bottom">
+            <p>&copy; 2024 ZeeXClub. Tous droits réservés.</p>
+            <p class="footer-made">Fait avec <span class="heart">❤</span> pour les cinéphiles</p>
+        </div>
+    </footer>
+
+    <!-- Toast container -->
+    <div id="toast-container" class="toast-container" aria-live="polite" aria-atomic="true"></div>
+
+    <!-- Scripts -->
+    <script type="module" src="/js/main.js"></script>
+    <script type="module" src="/js/bottom-nav.js"></script>
+    
+    <!-- Script pour cacher le loader -->
+    <script>
+        window.addEventListener('load', () => {
+            setTimeout(() => {
+                document.getElementById('page-loader').classList.add('hidden');
+            }, 2000);
+        });
+    </script>
+</body>
+</html>
