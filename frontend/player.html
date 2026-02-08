@@ -5,92 +5,1018 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Lecture - ZeeXClub</title>
-    <link rel="stylesheet" href="css/main.css">
-    <link rel="stylesheet" href="css/player.css">
-    <link rel="stylesheet" href="css/bottom-nav.css">
-
+    <meta name="theme-color" content="#0A0A0A">
+    
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <!-- CSS -->
+    <link rel="stylesheet" href="/css/main.css">
+    <link rel="stylesheet" href="/css/player.css">
+    <link rel="stylesheet" href="/css/bottom-nav.css">
+    <link rel="stylesheet" href="/css/responsive.css">
+    
+    <style>
+        /* ============================================
+           PLAYER PAGE STYLES
+           ============================================ */
+        
+        .player-page {
+            background: var(--background-black);
+            min-height: 100vh;
+            position: relative;
+        }
+        
+        /* ============================================
+           HEADER MINIMAL
+           ============================================ */
+        
+        .header-minimal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 100;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 1rem 2rem;
+            background: linear-gradient(to bottom, rgba(0,0,0,0.9) 0%, transparent 100%);
+            transition: all 0.3s ease;
+        }
+        
+        .header-minimal.scrolled {
+            background: rgba(10, 10, 10, 0.95);
+            backdrop-filter: blur(20px);
+        }
+        
+        .btn-back {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: white;
+            padding: 0.625rem 1.25rem;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            font-size: 0.9375rem;
+            font-weight: 500;
+            text-decoration: none;
+        }
+        
+        .btn-back:hover {
+            background: var(--primary-red);
+            border-color: var(--primary-red);
+            transform: translateX(-5px);
+            box-shadow: 0 10px 30px rgba(227, 30, 36, 0.4);
+        }
+        
+        .btn-back svg {
+            width: 20px;
+            height: 20px;
+            transition: transform 0.3s ease;
+        }
+        
+        .btn-back:hover svg {
+            transform: translateX(-3px);
+        }
+        
+        /* ============================================
+           PLAYER CONTAINER
+           ============================================ */
+        
+        .player-wrapper {
+            position: relative;
+            width: 100%;
+            background: #000;
+            border-radius: 0 0 24px 24px;
+            overflow: hidden;
+            box-shadow: 0 25px 80px rgba(0, 0, 0, 0.8);
+        }
+        
+        @media (min-width: 1024px) {
+            .player-wrapper {
+                max-width: 1400px;
+                margin: 80px auto 0;
+                border-radius: 24px;
+            }
+        }
+        
+        .player-container {
+            position: relative;
+            aspect-ratio: 16/9;
+            background: #000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        /* Animation de chargement */
+        .player-loader {
+            position: absolute;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 1.5rem;
+            z-index: 10;
+        }
+        
+        .loader-spinner {
+            width: 80px;
+            height: 80px;
+            position: relative;
+        }
+        
+        .loader-spinner svg {
+            width: 100%;
+            height: 100%;
+            animation: spin 1s linear infinite;
+        }
+        
+        .loader-spinner .track {
+            stroke: rgba(255, 255, 255, 0.1);
+        }
+        
+        .loader-spinner .progress {
+            stroke: var(--primary-red);
+            stroke-dasharray: 200;
+            stroke-dashoffset: 200;
+            animation: dash 2s ease-in-out infinite;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
+        @keyframes dash {
+            0% { stroke-dashoffset: 200; }
+            50% { stroke-dashoffset: 0; }
+            100% { stroke-dashoffset: -200; }
+        }
+        
+        .loader-text {
+            color: var(--light-gray);
+            font-size: 0.875rem;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            animation: pulse-text 1.5s ease-in-out infinite;
+        }
+        
+        @keyframes pulse-text {
+            0%, 100% { opacity: 0.5; }
+            50% { opacity: 1; }
+        }
+        
+        /* Bouton play central */
+        .play-overlay {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(0, 0, 0, 0.3);
+            opacity: 0;
+            transition: opacity 0.3s ease;
+            cursor: pointer;
+        }
+        
+        .player-container:hover .play-overlay {
+            opacity: 1;
+        }
+        
+        .play-button-main {
+            width: 100px;
+            height: 100px;
+            background: var(--gradient-primary);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transform: scale(0.8);
+            transition: all 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+            box-shadow: 0 20px 60px rgba(227, 30, 36, 0.5);
+            position: relative;
+        }
+        
+        .play-button-main::before {
+            content: '';
+            position: absolute;
+            inset: -10px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            animation: pulse-ring 2s ease-out infinite;
+        }
+        
+        @keyframes pulse-ring {
+            0% { transform: scale(1); opacity: 1; }
+            100% { transform: scale(1.3); opacity: 0; }
+        }
+        
+        .play-overlay:hover .play-button-main {
+            transform: scale(1);
+        }
+        
+        .play-button-main svg {
+            width: 40px;
+            height: 40px;
+            fill: white;
+            margin-left: 5px;
+            filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));
+        }
+        
+        /* ============================================
+           SERVER SELECTOR
+           ============================================ */
+        
+        .server-section {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+        
+        .server-title {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            font-size: 1.125rem;
+            font-weight: 700;
+            margin-bottom: 1rem;
+            color: var(--white-splash);
+        }
+        
+        .server-title svg {
+            width: 24px;
+            height: 24px;
+            color: var(--primary-blue);
+            animation: server-pulse 2s ease-in-out infinite;
+        }
+        
+        @keyframes server-pulse {
+            0%, 100% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.1); opacity: 0.8; }
+        }
+        
+        .server-list {
+            display: flex;
+            gap: 1rem;
+            flex-wrap: wrap;
+        }
+        
+        .server-btn {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 1rem 1.5rem;
+            background: rgba(255, 255, 255, 0.05);
+            border: 2px solid transparent;
+            border-radius: 16px;
+            color: var(--light-gray);
+            cursor: pointer;
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            min-width: 180px;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .server-btn::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: var(--gradient-primary);
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+        
+        .server-btn:hover {
+            transform: translateY(-3px);
+            border-color: rgba(227, 30, 36, 0.3);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+        }
+        
+        .server-btn.active {
+            background: transparent;
+            border-color: var(--primary-red);
+            color: white;
+        }
+        
+        .server-btn.active::before {
+            opacity: 0.1;
+        }
+        
+        .server-icon {
+            width: 32px;
+            height: 32px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            z-index: 1;
+        }
+        
+        .server-icon svg {
+            width: 18px;
+            height: 18px;
+        }
+        
+        .server-btn.active .server-icon {
+            background: var(--primary-red);
+            animation: icon-glow 2s ease-in-out infinite;
+        }
+        
+        @keyframes icon-glow {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(227, 30, 36, 0.4); }
+            50% { box-shadow: 0 0 20px 5px rgba(227, 30, 36, 0.4); }
+        }
+        
+        .server-info {
+            display: flex;
+            flex-direction: column;
+            gap: 0.25rem;
+            position: relative;
+            z-index: 1;
+        }
+        
+        .server-name {
+            font-weight: 600;
+            font-size: 0.9375rem;
+        }
+        
+        .server-quality {
+            font-size: 0.75rem;
+            color: var(--primary-blue);
+            font-weight: 500;
+        }
+        
+        .server-status {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            margin-left: auto;
+            position: relative;
+            z-index: 1;
+        }
+        
+        .server-status.online {
+            background: #10B981;
+            box-shadow: 0 0 10px #10B981;
+            animation: status-blink 2s ease-in-out infinite;
+        }
+        
+        @keyframes status-blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        
+        /* ============================================
+           VIDEO INFO
+           ============================================ */
+        
+        .video-info {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+        
+        .video-title {
+            font-size: 2.5rem;
+            font-weight: 800;
+            margin-bottom: 1rem;
+            background: var(--gradient-primary);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            line-height: 1.2;
+        }
+        
+        .video-meta {
+            display: flex;
+            gap: 1.5rem;
+            color: var(--light-gray);
+            font-size: 0.9375rem;
+            margin-bottom: 1.5rem;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+        
+        .video-meta span {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        .video-rating {
+            color: #FFD700;
+            font-weight: 700;
+            background: rgba(255, 215, 0, 0.1);
+            padding: 0.375rem 0.875rem;
+            border-radius: 20px;
+            border: 1px solid rgba(255, 215, 0, 0.3);
+        }
+        
+        .video-rating svg {
+            width: 16px;
+            height: 16px;
+            fill: currentColor;
+        }
+        
+        .video-year {
+            color: var(--white-splash);
+            font-weight: 600;
+        }
+        
+        .video-duration svg,
+        .video-views svg {
+            width: 16px;
+            height: 16px;
+            color: var(--primary-blue);
+        }
+        
+        .video-genres {
+            display: flex;
+            gap: 0.75rem;
+            flex-wrap: wrap;
+            margin-bottom: 1.5rem;
+        }
+        
+        .genre-tag {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: var(--lighter-gray);
+            padding: 0.5rem 1rem;
+            border-radius: 20px;
+            font-size: 0.875rem;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+        
+        .genre-tag:hover {
+            background: rgba(227, 30, 36, 0.2);
+            border-color: var(--primary-red);
+            color: var(--primary-red);
+            transform: translateY(-2px);
+        }
+        
+        .video-description {
+            color: var(--light-gray);
+            line-height: 1.8;
+            max-width: 800px;
+            margin-bottom: 2rem;
+            font-size: 1rem;
+        }
+        
+        /* ============================================
+           ACTION BUTTONS
+           ============================================ */
+        
+        .video-actions {
+            display: flex;
+            gap: 1rem;
+            flex-wrap: wrap;
+        }
+        
+        .btn-action {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 0.875rem 1.5rem;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 14px;
+            color: var(--white-splash);
+            font-size: 0.9375rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .btn-action::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: var(--gradient-primary);
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+        
+        .btn-action:hover {
+            transform: translateY(-3px);
+            border-color: transparent;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+        }
+        
+        .btn-action:hover::before {
+            opacity: 1;
+        }
+        
+        .btn-action svg {
+            width: 20px;
+            height: 20px;
+            position: relative;
+            z-index: 1;
+            transition: transform 0.3s ease;
+        }
+        
+        .btn-action:hover svg {
+            transform: scale(1.2);
+        }
+        
+        .btn-action span {
+            position: relative;
+            z-index: 1;
+        }
+        
+        .btn-action.active {
+            background: rgba(227, 30, 36, 0.2);
+            border-color: var(--primary-red);
+            color: var(--primary-red);
+        }
+        
+        .btn-action.active svg {
+            fill: var(--primary-red);
+            animation: heart-beat 1s ease;
+        }
+        
+        @keyframes heart-beat {
+            0%, 100% { transform: scale(1); }
+            25% { transform: scale(1.2); }
+            50% { transform: scale(1); }
+            75% { transform: scale(1.1); }
+        }
+        
+        /* ============================================
+           EPISODES SECTION
+           ============================================ */
+        
+        .episodes-section {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 0 2rem 3rem;
+        }
+        
+        .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .section-title {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            font-size: 1.375rem;
+            font-weight: 700;
+        }
+        
+        .section-title svg {
+            width: 24px;
+            height: 24px;
+            color: var(--primary-red);
+        }
+        
+        .season-select {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            padding: 0.625rem 2.5rem 0.625rem 1rem;
+            color: var(--white-splash);
+            font-size: 0.875rem;
+            cursor: pointer;
+            appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23E31E24' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 12px center;
+        }
+        
+        .episodes-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 1rem;
+        }
+        
+        .episode-card {
+            display: flex;
+            gap: 1rem;
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: 16px;
+            padding: 1rem;
+            cursor: pointer;
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .episode-card::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            width: 4px;
+            background: var(--gradient-primary);
+            transform: scaleY(0);
+            transition: transform 0.3s ease;
+        }
+        
+        .episode-card:hover {
+            background: rgba(255, 255, 255, 0.06);
+            border-color: rgba(255, 255, 255, 0.1);
+            transform: translateX(8px);
+        }
+        
+        .episode-card:hover::before {
+            transform: scaleY(1);
+        }
+        
+        .episode-card.active {
+            background: rgba(227, 30, 36, 0.1);
+            border-color: rgba(227, 30, 36, 0.3);
+        }
+        
+        .episode-thumbnail {
+            width: 120px;
+            height: 80px;
+            border-radius: 12px;
+            overflow: hidden;
+            flex-shrink: 0;
+            position: relative;
+        }
+        
+        .episode-thumbnail img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            transition: transform 0.3s ease;
+        }
+        
+        .episode-card:hover .episode-thumbnail img {
+            transform: scale(1.1);
+        }
+        
+        .episode-play-icon {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(0, 0, 0, 0.5);
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+        
+        .episode-card:hover .episode-play-icon {
+            opacity: 1;
+        }
+        
+        .episode-play-icon svg {
+            width: 32px;
+            height: 32px;
+            fill: white;
+        }
+        
+        .episode-info {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+        
+        .episode-number {
+            font-size: 0.75rem;
+            color: var(--primary-blue);
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 0.25rem;
+        }
+        
+        .episode-title {
+            font-size: 1rem;
+            font-weight: 600;
+            color: var(--white-splash);
+            margin-bottom: 0.5rem;
+            transition: color 0.3s ease;
+        }
+        
+        .episode-card:hover .episode-title {
+            background: var(--gradient-primary);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        .episode-duration {
+            display: flex;
+            align-items: center;
+            gap: 0.375rem;
+            font-size: 0.8125rem;
+            color: var(--light-gray);
+        }
+        
+        .episode-duration svg {
+            width: 14px;
+            height: 14px;
+        }
+        
+        .episode-progress {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: rgba(255, 255, 255, 0.1);
+        }
+        
+        .episode-progress-bar {
+            height: 100%;
+            background: var(--gradient-primary);
+            transition: width 0.3s ease;
+        }
+        
+        /* ============================================
+           RELATED VIDEOS
+           ============================================ */
+        
+        .related-section {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 0 2rem 4rem;
+        }
+        
+        .related-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 1.5rem;
+        }
+        
+        /* ============================================
+           RESPONSIVE
+           ============================================ */
+        
+        @media (max-width: 768px) {
+            .header-minimal {
+                padding: 0.75rem 1rem;
+            }
+            
+            .video-title {
+                font-size: 1.5rem;
+            }
+            
+            .video-meta {
+                font-size: 0.875rem;
+            }
+            
+            .server-list {
+                flex-direction: column;
+            }
+            
+            .server-btn {
+                width: 100%;
+            }
+            
+            .episodes-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .episode-thumbnail {
+                width: 100px;
+                height: 70px;
+            }
+        }
+    </style>
 </head>
-<body class="player-page">
-    <!-- Header minimal -->
-    <header class="header-minimal">
-        <a href="index.html" class="logo">
-            <img src="/img/logo.png" alt="ZeeXClub">
-        </a>
-        <button class="btn-back" onclick="history.back()">
-            <svg viewBox="0 0 24 24"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>
+<body>
+    <!-- Header -->
+    <header class="header-minimal" id="header-minimal">
+        <a href="index.html" class="btn-back">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="19" y1="12" x2="5" y2="12"></line>
+                <polyline points="12 19 5 12 12 5"></polyline>
+            </svg>
             Retour
-        </button>
+        </a>
     </header>
 
-    <main class="player-main">
-        <!-- Lecteur -->
-        <div id="player-wrapper" class="player-wrapper">
-            <div id="player-container" class="player-container">
-                <!-- Injecté par JS -->
+    <!-- Main Content -->
+    <main class="player-page">
+        <!-- Player -->
+        <div class="player-wrapper">
+            <div class="player-container" id="player-container">
+                <!-- Loader -->
+                <div class="player-loader" id="player-loader">
+                    <div class="loader-spinner">
+                        <svg viewBox="0 0 100 100">
+                            <circle class="track" cx="50" cy="50" r="45" fill="none" stroke-width="8"></circle>
+                            <circle class="progress" cx="50" cy="50" r="45" fill="none" stroke-width="8" stroke-linecap="round"></circle>
+                        </svg>
+                    </div>
+                    <span class="loader-text">Chargement</span>
+                </div>
+                
+                <!-- Play Button Overlay -->
+                <div class="play-overlay" id="play-overlay" style="display: none;">
+                    <div class="play-button-main">
+                        <svg viewBox="0 0 24 24">
+                            <polygon points="5 3 19 12 5 21 5 3" fill="currentColor"></polygon>
+                        </svg>
+                    </div>
+                </div>
+                
+                <!-- Video Element -->
+                <video id="video-player" style="width: 100%; height: 100%; display: none;" controls></video>
+            </div>
+        </div>
+
+        <!-- Server Selection -->
+        <section class="server-section">
+            <div class="server-title">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <rect x="2" y="2" width="20" height="8" rx="2" ry="2"></rect>
+                    <rect x="2" y="14" width="20" height="8" rx="2" ry="2"></rect>
+                    <line x1="6" y1="6" x2="6.01" y2="6"></line>
+                    <line x1="6" y1="18" x2="6.01" y2="18"></line>
+                </svg>
+                Serveurs disponibles
+            </div>
+            <div class="server-list">
+                <button class="server-btn active" data-server="telegram">
+                    <div class="server-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M21.198 2.433a2.242 2.242 0 0 0-1.022.215l-16.5 6.498a2.25 2.25 0 0 0 .126 4.24l3.9 1.296v5.285a1.5 1.5 0 0 0 2.4 1.2l3.6-2.7 2.7 2.7a1.5 1.5 0 0 0 2.1-2.1l-2.7-2.7 2.7-3.6a1.5 1.5 0 0 0-1.2-2.4h-5.285l-1.296-3.9a2.25 2.25 0 0 0-2.013-1.513z"></path>
+                        </svg>
+                    </div>
+                    <div class="server-info">
+                        <span class="server-name">Telegram</span>
+                        <span class="server-quality">HD 1080p</span>
+                    </div>
+                    <span class="server-status online"></span>
+                </button>
+                
+                <button class="server-btn" data-server="filemoon">
+                    <div class="server-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="12" r="10"></circle>
+                            <polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"></polygon>
+                        </svg>
+                    </div>
+                    <div class="server-info">
+                        <span class="server-name">Filemoon</span>
+                        <span class="server-quality">4K Ultra HD</span>
+                    </div>
+                    <span class="server-status online"></span>
+                </button>
+            </div>
+        </section>
+
+        <!-- Video Info -->
+        <section class="video-info">
+            <h1 class="video-title" id="video-title">Titre de la vidéo</h1>
+            
+            <div class="video-meta">
+                <span class="video-rating">
+                    <svg viewBox="0 0 24 24">
+                        <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
+                    </svg>
+                    8.5
+                </span>
+                <span class="video-year">2024</span>
+                <span class="video-duration">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <polyline points="12 6 12 12 16 14"></polyline>
+                    </svg>
+                    2h 15min
+                </span>
+                <span class="video-views">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                        <circle cx="12" cy="12" r="3"></circle>
+                    </svg>
+                    1.2M vues
+                </span>
             </div>
             
-            <!-- Sélecteur de serveur -->
-            <div id="server-selector" class="server-selector">
-                <button class="server-btn active" data-server="zeex">
-                    <span class="server-icon">▶️</span>
-                    <span class="server-name">ZeeX (HD)</span>
-                </button>
-                <button class="server-btn" data-server="filemoon">
-                    <span class="server-icon">☁️</span>
-                    <span class="server-name">Filemoon (Backup)</span>
-                </button>
+            <div class="video-genres">
+                <span class="genre-tag">Action</span>
+                <span class="genre-tag">Science-Fiction</span>
+                <span class="genre-tag">Aventure</span>
             </div>
-        </div>
-
-        <!-- Infos vidéo -->
-        <div class="video-info-panel">
-            <div class="video-primary-info">
-                <h1 id="video-title">Chargement...</h1>
-                <div id="video-meta" class="video-meta"></div>
-                <div id="video-genres" class="video-genres"></div>
-                <p id="video-description" class="video-description"></p>
-                
-                <div class="video-actions">
-                    <button id="btn-watchlist" class="btn-outline">
-                        <svg viewBox="0 0 24 24"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
-                        Ma Liste
-                    </button>
-                    <button id="btn-share" class="btn-outline">
-                        <svg viewBox="0 0 24 24"><path d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81 1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9c-1.66 0-3 1.34-3 3s1.34 3 3 3c.79 0 1.5-.31 2.04-.81l7.12 4.16c-.05.21-.08.43-.08.65 0 1.61 1.31 2.92 2.92 2.92 1.61 0 2.92-1.31 2.92-2.92s-1.31-2.92-2.92-2.92z"/></svg>
-                        Partager
-                    </button>
-                    <button id="btn-fullscreen" class="btn-outline">
-                        <svg viewBox="0 0 24 24"><path d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z"/></svg>
-                        Plein écran
-                    </button>
-                </div>
-            </div>
-
-            <!-- Commentaires -->
-            <div class="comments-section-wrapper">
-                <button id="toggle-comments" class="btn-toggle-comments">
-                    💬 Afficher les commentaires (<span id="comments-count">0</span>)
+            
+            <p class="video-description" id="video-description">
+                Description de la vidéo qui apparaîtra ici. Cette description peut être assez longue et détailler l'intrigue, les acteurs, et autres informations pertinentes sur le contenu.
+            </p>
+            
+            <div class="video-actions">
+                <button class="btn-action" id="btn-watchlist" data-action="add-to-list">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
+                    </svg>
+                    <span>Ma liste</span>
                 </button>
                 
-                <div id="comments-section" class="comments-section">
-                    <form id="comment-form" class="comment-form">
-                        <textarea placeholder="Ajouter un commentaire..." maxlength="1000" required></textarea>
-                        <button type="submit" class="btn-primary">Publier</button>
-                    </form>
-                    <div id="comments-list" class="comments-list"></div>
-                </div>
+                <button class="btn-action" data-action="share">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="18" cy="5" r="3"></circle>
+                        <circle cx="6" cy="12" r="3"></circle>
+                        <circle cx="18" cy="19" r="3"></circle>
+                        <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line>
+                        <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line>
+                    </svg>
+                    <span>Partager</span>
+                </button>
+                
+                <button class="btn-action" data-action="download">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                        <polyline points="7 10 12 15 17 10"></polyline>
+                        <line x1="12" y1="15" x2="12" y2="3"></line>
+                    </svg>
+                    <span>Télécharger</span>
+                </button>
             </div>
-        </div>
+        </section>
 
-        <!-- Similaires -->
-        <section id="similar-videos" class="similar-section">
-            <h3>Vous pourriez aussi aimer</h3>
-            <div class="movie-grid"></div>
+        <!-- Episodes Section (pour les séries) -->
+        <section class="episodes-section" id="episodes-section" style="display: none;">
+            <div class="section-header">
+                <h2 class="section-title">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect>
+                        <line x1="8" y1="21" x2="16" y2="21"></line>
+                        <line x1="12" y1="17" x2="12" y2="21"></line>
+                    </svg>
+                    Episodes
+                </h2>
+                <select class="season-select">
+                    <option>Saison 1</option>
+                    <option>Saison 2</option>
+                    <option>Saison 3</option>
+                </select>
+            </div>
+            
+            <div class="episodes-grid" id="episodes-grid">
+                <!-- Généré dynamiquement -->
+            </div>
+        </section>
+
+        <!-- Related Videos -->
+        <section class="related-section">
+            <div class="section-header">
+                <h2 class="section-title">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polygon points="12 2 2 7 12 12 22 7 12 2"></polygon>
+                        <polyline points="2 17 12 22 22 17"></polyline>
+                        <polyline points="2 12 12 17 22 12"></polyline>
+                    </svg>
+                    Contenu similaire
+                </h2>
+            </div>
+            <div class="related-grid" id="related-grid">
+                <!-- Généré dynamiquement -->
+            </div>
         </section>
     </main>
 
-    <script type="module" src="/js/player.js"></script>
+    <!-- Scripts -->
     <script type="module" src="/js/bottom-nav.js"></script>
-
+    <script type="module" src="/js/player.js"></script>
+    
+    <script>
+        // Interactions
+        document.addEventListener('DOMContentLoaded', () => {
+            // Server selection
+            document.querySelectorAll('.server-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    document.querySelectorAll('.server-btn').forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+                });
+            });
+            
+            // Watchlist button
+            const watchlistBtn = document.getElementById('btn-watchlist');
+            watchlistBtn?.addEventListener('click', () => {
+                watchlistBtn.classList.toggle('active');
+            });
+            
+            // Header scroll effect
+            const header = document.getElementById('header-minimal');
+            window.addEventListener('scroll', () => {
+                header?.classList.toggle('scrolled', window.scrollY > 50);
+            }, { passive: true });
+        });
+    </script>
 </body>
 </html>
