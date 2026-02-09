@@ -110,11 +110,8 @@ class ZeeXClubBot:
             setup_commands(self.app, self.session_manager)
             setup_handlers(self.app, self.session_manager)
             
-            error_handler = MessageHandler(
-                self._error_handler,
-                filters.all & filters.private
-            )
-            self.app.add_handler(error_handler, group=-1)
+            # ✅ CORRECTION: Suppression du handler d'erreurs problématique
+            # Laisse Pyrogram gérer les erreurs par défaut
             
             logger.info("✅ Bot initialisé")
             return True
@@ -122,9 +119,6 @@ class ZeeXClubBot:
         except Exception as e:
             logger.error(f"❌ Erreur init: {e}")
             return False
-    
-    async def _error_handler(self, client, message, exception):
-        logger.error(f"❌ Erreur: {exception}")
     
     async def run(self):
         """Démarre le bot"""
