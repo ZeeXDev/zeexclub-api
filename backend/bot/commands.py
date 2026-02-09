@@ -25,52 +25,6 @@ def setup_commands(app: Client, session_manager: SessionManager):
         app: Client Pyrogram
         session_manager: Gestionnaire de sessions
     """
-    
-    # =============================================================================
-# FONCTION UTILITAIRE (pour handlers.py)
-# =============================================================================
-
-async def display_folder_details(message, folder_id: str):
-    """
-    Affiche les détails d'un dossier (fonction utilisable depuis handlers.py)
-    """
-    from bot.utils import escape_markdown, create_video_summary
-    from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton
-    from database.supabase_client import supabase_manager
-    
-    folder = supabase_manager.get_folder_by_id(folder_id)
-    if not folder:
-        await message.reply("❌ Dossier introuvable", parse_mode=enums.ParseMode.MARKDOWN)
-        return
-    
-    videos = supabase_manager.get_videos_by_folder(folder_id)
-    
-    # Construire le message
-    header = f"📁 **{escape_markdown(folder['folder_name'])}**\n\n"
-    
-    if videos:
-        header += create_video_summary(videos)
-    else:
-        header += "📂 **Dossier vide**\n\n"
-        header += "Utilisez `/add` pour ajouter des vidéos."
-    
-    # Boutons d'action
-    buttons = []
-    
-    # Vérifier s'il y a des sous-dossiers
-    subfolders = supabase_manager.get_subfolders(folder_id)
-    if subfolders:
-        buttons.append([InlineKeyboardButton(
-            f"📂 Voir les {len(subfolders)} sous-dossiers", 
-            callback_data=f"list_subfolders:{folder_id}"
-        )])
-    
-    buttons.append([
-        InlineKeyboardButton("➕ Ajouter des vidéos", callback_data=f"add_to_folder:{folder_id}"),
-        InlineKeyboardButton("🗑️ Supprimer", callback_data=f"delete_folder:{folder_id}")
-    ])
-    
-    await message.reply(header, reply_markup=InlineKeyboardMarkup(buttons), parse_mode=enums.ParseMode.MARKDOWN)
 
     # =========================================================================
     # COMMANDE START
