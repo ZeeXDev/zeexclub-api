@@ -26,6 +26,7 @@ class CatalogManager {
     init() {
         this.loadMovies();
         this.initInfiniteScroll();
+        this.initFilters();
     }
     
     async loadMovies(append = false) {
@@ -33,13 +34,15 @@ class CatalogManager {
         this.isLoading = true;
         
         try {
+            // ✅ CORRECTION: Utiliser la bonne fonction API
             const response = await api.getMovies({
                 ...this.filters,
-                page: this.page
+                page: this.page,
+                limit: 20
             });
             
-            this.renderMovies(response.data, append);
-            this.updateResultsCount(response.total);
+            this.renderMovies(response.data || [], append);
+            this.updateResultsCount(response.total || (response.data || []).length);
             
         } catch (error) {
             handleApiError(error);
@@ -73,15 +76,18 @@ class CatalogManager {
             return;
         }
         
+        // ✅ CORRECTION: Utiliser createMovieCard correctement (HTMLElement)
         movies.forEach((movie, index) => {
-            const card = document.createElement('div');
-            card.className = 'movie-card';
-            card.style.animationDelay = `${index * 0.05}s`;
-            card.innerHTML = createMovieCard(movie);
-            card.addEventListener('click', () => {
-                window.location.href = `player.html?id=${movie.id}`;
+            const card = createMovieCard(movie, {
+                onClick: () => {
+                    window.location.href = `player.html?id=${movie.id}`;
+                }
             });
-            grid.appendChild(card);
+            
+            if (card) {
+                card.style.animationDelay = `${index * 0.05}s`;
+                grid.appendChild(card);
+            }
         });
     }
     
@@ -89,7 +95,7 @@ class CatalogManager {
         const el = document.getElementById('results-total');
         if (el) {
             // Animation du compteur
-            const start = parseInt(el.textContent) || 0;
+            const start = parseInt(el.textContent.replace(/[^\d]/g, '')) || 0;
             const end = total || 0;
             const duration = 500;
             const startTime = performance.now();
@@ -127,6 +133,27 @@ class CatalogManager {
         sentinel.style.height = '10px';
         document.getElementById('catalog-grid')?.appendChild(sentinel);
         observer.observe(sentinel);
+    }
+    
+    initFilters() {
+        // Initialiser les écouteurs de filtres
+        document.querySelectorAll('.filter-chip').forEach(chip => {
+            chip.addEventListener('click', (e) => {
+                document.querySelectorAll('.filter-chip').forEach(c => c.classList.remove('active'));
+                e.target.classList.add('active');
+                
+                const filterType = e.target.dataset.filter;
+                this.updateFilter('type', filterType === 'all' ? null : filterType);
+            });
+        });
+        
+        // Recherche
+        const searchInput = document.getElementById('catalog-search');
+        if (searchInput) {
+            searchInput.addEventListener('input', debounce((e) => {
+                this.updateFilter('query', e.target.value);
+            }, 300));
+        }
     }
     
     updateFilter(key, value) {

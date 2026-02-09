@@ -1,4 +1,4 @@
-<!-- frontend/player.html -->
+<!-- frontend/player.html - Version corrigée -->
 <!DOCTYPE html>
 <html lang="fr">
 <head>
@@ -15,7 +15,7 @@
     <!-- CSS -->
     <link rel="stylesheet" href="/css/main.css">
     <link rel="stylesheet" href="/css/player.css">
-    <link rel="stylesheet" href="/css/bottom-nav.css">
+    <link rel="stylesheet" href="/css/bottom-nav.css" onerror="this.remove()">
     <link rel="stylesheet" href="/css/responsive.css">
     
     <style>
@@ -836,7 +836,7 @@
                 </div>
                 
                 <!-- Video Element -->
-                <video id="video-player" style="width: 100%; height: 100%; display: none;" controls></video>
+                <video id="video-player" style="width: 100%; height: 100%; display: none;" controls playsinline></video>
             </div>
         </div>
 
@@ -851,7 +851,7 @@
                 </svg>
                 Serveurs disponibles
             </div>
-            <div class="server-list">
+            <div class="server-list" id="server-list">
                 <button class="server-btn active" data-server="telegram">
                     <div class="server-icon">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -885,22 +885,22 @@
         <section class="video-info">
             <h1 class="video-title" id="video-title">Titre de la vidéo</h1>
             
-            <div class="video-meta">
-                <span class="video-rating">
+            <div class="video-meta" id="video-meta">
+                <span class="video-rating" id="video-rating">
                     <svg viewBox="0 0 24 24">
                         <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
                     </svg>
                     8.5
                 </span>
-                <span class="video-year">2024</span>
-                <span class="video-duration">
+                <span class="video-year" id="video-year">2024</span>
+                <span class="video-duration" id="video-duration">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <circle cx="12" cy="12" r="10"></circle>
                         <polyline points="12 6 12 12 16 14"></polyline>
                     </svg>
                     2h 15min
                 </span>
-                <span class="video-views">
+                <span class="video-views" id="video-views">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
                         <circle cx="12" cy="12" r="3"></circle>
@@ -909,7 +909,7 @@
                 </span>
             </div>
             
-            <div class="video-genres">
+            <div class="video-genres" id="video-genres">
                 <span class="genre-tag">Action</span>
                 <span class="genre-tag">Science-Fiction</span>
                 <span class="genre-tag">Aventure</span>
@@ -927,7 +927,7 @@
                     <span>Ma liste</span>
                 </button>
                 
-                <button class="btn-action" data-action="share">
+                <button class="btn-action" id="btn-share" data-action="share">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <circle cx="18" cy="5" r="3"></circle>
                         <circle cx="6" cy="12" r="3"></circle>
@@ -938,7 +938,7 @@
                     <span>Partager</span>
                 </button>
                 
-                <button class="btn-action" data-action="download">
+                <button class="btn-action" id="btn-download" data-action="download">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
                         <polyline points="7 10 12 15 17 10"></polyline>
@@ -960,10 +960,10 @@
                     </svg>
                     Episodes
                 </h2>
-                <select class="season-select">
-                    <option>Saison 1</option>
-                    <option>Saison 2</option>
-                    <option>Saison 3</option>
+                <select class="season-select" id="season-select">
+                    <option value="1">Saison 1</option>
+                    <option value="2">Saison 2</option>
+                    <option value="3">Saison 3</option>
                 </select>
             </div>
             
@@ -991,32 +991,27 @@
     </main>
 
     <!-- Scripts -->
-    <script type="module" src="/js/bottom-nav.js"></script>
+    <script type="module" src="/js/bottom-nav.js" onerror="console.log('bottom-nav.js non disponible')"></script>
     <script type="module" src="/js/player.js"></script>
     
+    <!-- ✅ CORRECTION: Script minimal qui ne conflit pas avec player.js -->
     <script>
-        // Interactions
-        document.addEventListener('DOMContentLoaded', () => {
-            // Server selection
-            document.querySelectorAll('.server-btn').forEach(btn => {
-                btn.addEventListener('click', () => {
-                    document.querySelectorAll('.server-btn').forEach(b => b.classList.remove('active'));
-                    btn.classList.add('active');
-                });
-            });
-            
-            // Watchlist button
-            const watchlistBtn = document.getElementById('btn-watchlist');
-            watchlistBtn?.addEventListener('click', () => {
-                watchlistBtn.classList.toggle('active');
-            });
-            
-            // Header scroll effect
-            const header = document.getElementById('header-minimal');
-            window.addEventListener('scroll', () => {
-                header?.classList.toggle('scrolled', window.scrollY > 50);
-            }, { passive: true });
+        // Gestion d'erreur globale
+        window.addEventListener('error', (e) => {
+            console.error('Erreur:', e.error);
         });
+        
+        window.addEventListener('unhandledrejection', (e) => {
+            console.error('Promise rejetée:', e.reason);
+        });
+        
+        // Header scroll effect (indépendant du player)
+        const header = document.getElementById('header-minimal');
+        if (header) {
+            window.addEventListener('scroll', () => {
+                header.classList.toggle('scrolled', window.scrollY > 50);
+            }, { passive: true });
+        }
     </script>
 </body>
 </html>

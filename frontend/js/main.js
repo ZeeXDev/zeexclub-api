@@ -84,7 +84,7 @@ async function loadPageContent() {
             await loadProfilePage();
             break;
         case 'player.html':
-            await loadPlayerPage();
+            // Le player gère son propre chargement
             break;
     }
 }
@@ -96,20 +96,19 @@ async function loadHomePage() {
     showLoading();
     
     try {
-        // Charger les sections en parallèle
-        const [recentResponse, newResponse, trendingResponse] = await Promise.all([
-            api.getRecentMovies(),
-            api.getNewReleases(),
-            api.getTrending()
+        // ✅ CORRECTION: Utiliser les bonnes fonctions API
+        const [recentResponse, trendingResponse] = await Promise.all([
+            api.getRecentVideos(12),
+            api.getTrending(12)
         ]);
         
         // Rendre les sections
-        renderSection('recent-grid', recentResponse.data, 'Aucun film récent');
-        renderSection('new-grid', newResponse.data, 'Aucune nouveauté');
-        renderSection('trending-grid', trendingResponse.data, 'Aucune tendance');
+        // ✅ CORRECTION: createMovieCard retourne un HTMLElement, pas une string
+        renderSectionCards('new-grid', recentResponse.data || [], 'Aucun film récent');
+        renderSectionCards('trending-grid', trendingResponse.data || [], 'Aucune tendance');
         
         // Initialiser le slider hero
-        initHeroSlider([...recentResponse.data].slice(0, 5));
+        initHeroSlider((recentResponse.data || []).slice(0, 5));
         
     } catch (error) {
         console.error('Error loading home:', error);
@@ -120,7 +119,38 @@ async function loadHomePage() {
 }
 
 /**
- * Rend une section de films
+ * ✅ CORRECTION: Rend une section avec createMovieCard (HTMLElement)
+ */
+function renderSectionCards(gridId, movies, emptyMessage) {
+    const grid = document.getElementById(gridId);
+    if (!grid) return;
+    
+    if (!movies || movies.length === 0) {
+        grid.innerHTML = `
+            <div class="empty-state">
+                <p>${emptyMessage}</p>
+            </div>
+        `;
+        return;
+    }
+    
+    grid.innerHTML = '';
+    
+    movies.forEach((movie, index) => {
+        const card = createMovieCard(movie, { 
+            delay: index * 0.1,
+            onClick: () => navigateToPlayer(movie.id)
+        });
+        
+        if (card) {
+            card.style.animationDelay = `${index * 0.1}s`;
+            grid.appendChild(card);
+        }
+    });
+}
+
+/**
+ * ✅ CORRECTION: Rend une section avec HTML string (pour compatibilité)
  */
 function renderSection(gridId, movies, emptyMessage) {
     const grid = document.getElementById(gridId);
@@ -135,15 +165,29 @@ function renderSection(gridId, movies, emptyMessage) {
         return;
     }
     
-    grid.innerHTML = movies.map((movie, index) => 
-        createMovieCard(movie, { delay: index * 0.1 })
-    ).join('');
+    grid.innerHTML = movies.map((movie, index) => `
+        <div class="movie-card" style="animation-delay: ${index * 0.1}s" data-id="${movie.id}">
+            <div class="card-image">
+                <img src="${movie.poster_url || '/img/default-poster.png'}" alt="${movie.title}" loading="lazy">
+                <div class="card-overlay">
+                    <button class="play-btn">
+                        <svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+                    </button>
+                </div>
+            </div>
+            <div class="card-content">
+                <h3 class="card-title">${movie.title}</h3>
+                ${movie.year ? `<span class="card-year">${movie.year}</span>` : ''}
+                ${movie.rating ? `<span class="card-rating">⭐ ${movie.rating.toFixed(1)}</span>` : ''}
+            </div>
+        </div>
+    `).join('');
     
     // Ajouter les événements de clic
-    grid.querySelectorAll('.movie-card').forEach((card, index) => {
+    grid.querySelectorAll('.movie-card').forEach((card) => {
         card.addEventListener('click', () => {
-            const movie = movies[index];
-            navigateToPlayer(movie.id);
+            const movieId = card.dataset.id;
+            navigateToPlayer(movieId);
         });
     });
 }
@@ -161,34 +205,23 @@ function initHeroSlider(slides = []) {
     let currentIndex = 0;
     let autoSlideInterval;
     
-    // Créer les slides
-    const slidesContainer = heroSection.querySelector('.hero-slides');
-    if (slidesContainer) {
-        slidesContainer.innerHTML = slides.map((slide, index) => `
-            <div class="hero-slide ${index === 0 ? 'active' : ''}" data-index="${index}">
-                <div class="hero-bg">
-                    <img src="${slide.backdrop || slide.poster}" alt="${slide.title}">
-                    <div class="hero-gradient"></div>
-                </div>
-            </div>
-        `).join('');
-    }
-    
     // Mettre à jour le contenu
     function updateSlide(index) {
         const slide = slides[index];
         currentIndex = index;
         
         // Mettre à jour l'image de fond
-        document.querySelectorAll('.hero-slide').forEach((s, i) => {
-            s.classList.toggle('active', i === index);
-        });
+        const bgImg = heroSection.querySelector('.hero-bg img');
+        if (bgImg && slide.backdrop_url) {
+            bgImg.src = slide.backdrop_url;
+            bgImg.alt = slide.title;
+        }
         
         // Mettre à jour le texte
-        const titleEl = document.querySelector('.hero-title');
-        const synopsisEl = document.querySelector('.hero-synopsis');
-        const metaEl = document.querySelector('.hero-meta');
-        const ctaBtn = document.querySelector('.btn-hero-primary');
+        const titleEl = heroSection.querySelector('.hero-title');
+        const synopsisEl = heroSection.querySelector('.hero-synopsis');
+        const metaEl = heroSection.querySelector('.hero-meta');
+        const ctaBtn = heroSection.querySelector('.btn-hero-primary');
         
         if (titleEl) {
             titleEl.style.opacity = '0';
@@ -201,15 +234,15 @@ function initHeroSlider(slides = []) {
         }
         
         if (synopsisEl) {
-            synopsisEl.textContent = slide.synopsis || slide.description || '';
+            synopsisEl.textContent = slide.description || '';
         }
         
         if (metaEl) {
             metaEl.innerHTML = `
                 <span class="hero-rating">★ ${slide.rating || 'N/A'}</span>
                 <span>${slide.year || ''}</span>
-                <span>${slide.duration || ''}</span>
-                <span class="hero-badge">${slide.genre || 'Action'}</span>
+                <span>${slide.duration ? formatDuration(slide.duration) : ''}</span>
+                <span class="hero-badge">${(slide.genre || [])[0] || 'Action'}</span>
             `;
         }
         
@@ -294,6 +327,8 @@ function initHeroSlider(slides = []) {
         }
     }, { passive: true });
     
+    // Initialiser avec le premier slide
+    updateSlide(0);
     startAutoSlide();
 }
 
@@ -633,7 +668,7 @@ function initSearch() {
  */
 async function performSearch(query) {
     try {
-        const results = await api.search(query);
+        const results = await api.searchVideos(query);
         displaySearchResults(results.data);
     } catch (error) {
         handleApiError(error);
@@ -654,10 +689,10 @@ function displaySearchResults(results) {
     
     container.innerHTML = results.map(movie => `
         <div class="search-result-item" data-id="${movie.id}">
-            <img src="${movie.poster}" alt="${movie.title}">
+            <img src="${movie.poster_url || '/img/default-poster.png'}" alt="${movie.title}">
             <div class="result-info">
                 <h4>${movie.title}</h4>
-                <span>${movie.year} • ${movie.genre}</span>
+                <span>${movie.year} • ${(movie.genre || [])[0] || 'Action'}</span>
             </div>
         </div>
     `).join('');
@@ -790,26 +825,35 @@ function initSmoothScroll() {
 }
 
 /**
- * Placeholders pour les autres pages
+ * ✅ CORRECTION: Implémentation complète des pages
  */
 async function loadCatalogPage() {
     console.log('Loading catalog...');
+    // Le catalog.js gère cette page
 }
 
 async function loadTrendingPage() {
     console.log('Loading trending...');
+    // Charger les tendances
+    try {
+        const { data } = await api.getTrending(20);
+        const grid = document.getElementById('trending-grid');
+        if (grid) {
+            renderSectionCards('trending-grid', data, 'Aucune tendance');
+        }
+    } catch (error) {
+        handleApiError(error);
+    }
 }
 
 async function loadMyListPage() {
     console.log('Loading my list...');
+    // La page mylist gère son propre contenu
 }
 
 async function loadProfilePage() {
     console.log('Loading profile...');
-}
-
-async function loadPlayerPage() {
-    console.log('Loading player...');
+    // La page profile gère son propre contenu
 }
 
 // Exposer les fonctions globales

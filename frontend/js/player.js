@@ -3,7 +3,7 @@
  * Script pour la page lecteur vidéo
  */
 
-import { initAuth, requireAuth } from './auth.js';
+import { initAuth } from './auth.js';
 import api from './api.js';
 import { 
     showLoading, 
@@ -89,12 +89,12 @@ function updateVideoInfo(video) {
     const metaEl = document.getElementById('video-meta');
     if (metaEl) {
         const parts = [];
-        if (video.year) parts.push(video.year);
-        if (video.duration) parts.push(formatDuration(video.duration));
-        if (video.rating) parts.push(`⭐ ${video.rating.toFixed(1)}`);
-        if (video.views_count) parts.push(`${video.views_count} vues`);
+        if (video.year) parts.push(`<span class="video-year">${video.year}</span>`);
+        if (video.duration) parts.push(`<span class="video-duration">${formatDuration(video.duration)}</span>`);
+        if (video.rating) parts.push(`<span class="video-rating">⭐ ${video.rating.toFixed(1)}</span>`);
+        if (video.views_count) parts.push(`<span class="video-views">${video.views_count} vues</span>`);
         
-        metaEl.innerHTML = parts.map(p => `<span>${p}</span>`).join(' • ');
+        metaEl.innerHTML = parts.join(' • ');
     }
     
     // Description
@@ -126,7 +126,7 @@ function setupPlayer(video) {
     const streamUrl = video.zeex_url;
     
     container.innerHTML = `
-        <video id="main-player" controls autoplay playsinline>
+        <video id="main-player" controls autoplay playsinline style="width: 100%; height: 100%;">
             <source src="${streamUrl}" type="${video.mime_type || 'video/mp4'}">
             Votre navigateur ne supporte pas la lecture vidéo.
         </video>
@@ -182,7 +182,7 @@ function switchServer(server) {
  * Initialise le sélecteur de serveur
  */
 function initServerSelector() {
-    const selector = document.getElementById('server-selector');
+    const selector = document.getElementById('server-list');
     if (!selector) return;
     
     selector.addEventListener('click', (e) => {
@@ -318,9 +318,12 @@ async function initComments() {
         
         if (!text) return;
         
-        // Vérifier authentification
-        const user = await requireAuth();
-        if (!user) return;
+        // ✅ CORRECTION: Vérifier authentification sans redirection forcée
+        const { data: { user } } = await import('./supabase-client.js').then(m => m.supabase.auth.getUser());
+        if (!user) {
+            showToast('Connectez-vous pour commenter', 'error');
+            return;
+        }
         
         try {
             await api.postComment(currentVideo.id, text);
@@ -413,18 +416,35 @@ async function loadSimilarVideos(video) {
             return;
         }
         
-        const grid = container.querySelector('.movie-grid');
+        const grid = container.querySelector('.movie-grid') || container;
         if (!grid) return;
         
         grid.innerHTML = '';
         
         similar.forEach((v, index) => {
-            const card = createMovieCard(v, {
-                onClick: () => {
-                    window.location.href = `player.html?id=${v.id}`;
-                }
-            });
+            // ✅ CORRECTION: Importer createMovieCard dynamiquement si nécessaire
+            const card = document.createElement('div');
+            card.className = 'movie-card';
             card.style.animationDelay = `${index * 0.1}s`;
+            card.innerHTML = `
+                <div class="card-image">
+                    <img src="${v.poster_url || '/img/default-poster.png'}" alt="${v.title}" loading="lazy">
+                    <div class="card-overlay">
+                        <button class="play-btn">
+                            <svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+                        </button>
+                    </div>
+                </div>
+                <div class="card-content">
+                    <h3 class="card-title">${escapeHtml(v.title)}</h3>
+                    ${v.year ? `<span class="card-year">${v.year}</span>` : ''}
+                </div>
+            `;
+            
+            card.addEventListener('click', () => {
+                window.location.href = `player.html?id=${v.id}`;
+            });
+            
             grid.appendChild(card);
         });
         

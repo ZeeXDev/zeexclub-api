@@ -10,8 +10,7 @@ import {
     hideLoading, 
     showToast,
     handleApiError,
-    formatDuration,
-    createMovieCard
+    formatDuration
 } from './utils.js';
 
 /**
@@ -67,7 +66,10 @@ async function loadWatchHistory() {
         }
         
         data.forEach(item => {
-            const video = item.videos;
+            // ✅ CORRECTION: Utiliser item.video (jointure Supabase) au lieu de item.videos
+            const video = item.video || item.videos;
+            if (!video) return;
+            
             const progress = video.duration 
                 ? Math.round((item.progress / video.duration) * 100) 
                 : 0;
@@ -117,24 +119,42 @@ async function loadWatchlist() {
             return;
         }
         
-        data.forEach((item, index) => {
-            const video = item.videos;
-            const card = createMovieCard(video, {
-                onClick: () => {
+        data.forEach((item) => {
+            // ✅ CORRECTION: Utiliser item.video (jointure Supabase)
+            const video = item.video || item.videos;
+            if (!video) return;
+            
+            const card = document.createElement('div');
+            card.className = 'movie-card';
+            card.innerHTML = `
+                <div class="card-image">
+                    <img src="${video.poster_url || '/img/default-poster.png'}" alt="${video.title}" loading="lazy">
+                    <div class="card-overlay">
+                        <button class="play-btn">
+                            <svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+                        </button>
+                    </div>
+                    <button class="btn-remove" data-id="${video.id}">✕</button>
+                </div>
+                <div class="card-content">
+                    <h3 class="card-title">${video.title}</h3>
+                    ${video.year ? `<span class="card-year">${video.year}</span>` : ''}
+                </div>
+            `;
+            
+            // Clic sur la carte
+            card.addEventListener('click', (e) => {
+                if (!e.target.closest('.btn-remove')) {
                     window.location.href = `player.html?id=${video.id}`;
                 }
             });
             
             // Bouton suppression
-            const removeBtn = document.createElement('button');
-            removeBtn.className = 'btn-remove';
-            removeBtn.innerHTML = '✕';
-            removeBtn.onclick = (e) => {
+            card.querySelector('.btn-remove')?.addEventListener('click', (e) => {
                 e.stopPropagation();
                 removeFromWatchlist(video.id, card);
-            };
+            });
             
-            card.appendChild(removeBtn);
             grid.appendChild(card);
         });
         
@@ -146,7 +166,9 @@ async function loadWatchlist() {
 async function removeFromWatchlist(videoId, element) {
     try {
         await api.removeFromWatchlist(videoId);
-        element.remove();
+        element.style.transform = 'translateX(100%)';
+        element.style.opacity = '0';
+        setTimeout(() => element.remove(), 300);
         showToast('Retiré de votre liste', 'success');
     } catch (error) {
         handleApiError(error);
@@ -163,7 +185,8 @@ async function loadStats() {
         
         const totalWatched = history?.length || 0;
         const totalTime = history?.reduce((sum, item) => {
-            return sum + (item.videos?.duration || 0);
+            const video = item.video || item.videos;
+            return sum + (video?.duration || 0);
         }, 0) || 0;
         
         const statsEl = document.getElementById('user-stats');

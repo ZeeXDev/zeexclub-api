@@ -197,35 +197,40 @@ export function throttle(func, limit) {
 }
 
 /**
- * Crée une carte de film/série
+ * ✅ CORRECTION: Crée une carte de film/série - retourne un HTMLElement
  */
 export function createMovieCard(video, options = {}) {
     const {
         showEpisode = false,
         showProgress = false,
         progress = 0,
+        delay = 0,
         onClick
     } = options;
     
+    // Créer l'élément principal
     const card = document.createElement('div');
     card.className = 'movie-card';
+    if (delay) {
+        card.style.animationDelay = `${delay}s`;
+    }
     
     // Image poster
     const posterUrl = video.poster_url || video.still_path || CONFIG.DEFAULT_POSTER;
     
     // Badge épisode
-    let badge = '';
+    let badgeHTML = '';
     if (showEpisode && (video.episode_number || video.season_number)) {
         const epText = video.season_number 
             ? `S${video.season_number}E${video.episode_number}` 
             : `E${video.episode_number}`;
-        badge = `<span class="episode-badge">${epText}</span>`;
+        badgeHTML = `<span class="episode-badge">${epText}</span>`;
     }
     
     // Barre de progression
-    let progressBar = '';
+    let progressHTML = '';
     if (showProgress && progress > 0) {
-        progressBar = `
+        progressHTML = `
             <div class="progress-bar">
                 <div class="progress-fill" style="width: ${progress}%"></div>
             </div>
@@ -235,7 +240,7 @@ export function createMovieCard(video, options = {}) {
     card.innerHTML = `
         <div class="card-image">
             <img src="${posterUrl}" alt="${video.title}" loading="lazy">
-            ${badge}
+            ${badgeHTML}
             <div class="card-overlay">
                 <button class="play-btn">
                     <svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
@@ -246,12 +251,14 @@ export function createMovieCard(video, options = {}) {
             <h3 class="card-title">${escapeHtml(video.title)}</h3>
             ${video.year ? `<span class="card-year">${video.year}</span>` : ''}
             ${video.rating ? `<span class="card-rating">⭐ ${video.rating.toFixed(1)}</span>` : ''}
-            ${progressBar}
+            ${progressHTML}
         </div>
     `;
     
+    // Ajouter l'événement de clic
     if (onClick) {
         card.addEventListener('click', () => onClick(video));
+        card.style.cursor = 'pointer';
     }
     
     return card;

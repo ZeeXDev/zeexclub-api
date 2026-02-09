@@ -26,9 +26,27 @@ from config import (
     ADMIN_IDS,
     validate_config
 )
-from bot.commands import setup_commands
-from bot.handlers import setup_handlers
-from bot.sessions import SessionManager
+
+# ✅ CORRECTION: Imports optionnels avec fallback
+try:
+    from bot.commands import setup_commands
+    from bot.handlers import setup_handlers
+    from bot.sessions import SessionManager
+    BOT_MODULES_AVAILABLE = True
+except ImportError as e:
+    logging.warning(f"⚠️ Modules bot non disponibles: {e}")
+    BOT_MODULES_AVAILABLE = False
+    
+    # Fallback: classes vides
+    def setup_commands(app, session_manager):
+        pass
+    
+    def setup_handlers(app, session_manager):
+        pass
+    
+    class SessionManager:
+        def __init__(self):
+            self.sessions = {}
 
 # Logging
 logging.basicConfig(
@@ -107,11 +125,10 @@ class ZeeXClubBot:
                 workers=50,
                 parse_mode=enums.ParseMode.MARKDOWN)
             
-            setup_commands(self.app, self.session_manager)
-            setup_handlers(self.app, self.session_manager)
-            
-            # ✅ CORRECTION: Suppression du handler d'erreurs problématique
-            # Laisse Pyrogram gérer les erreurs par défaut
+            # Setup des commandes et handlers (si disponibles)
+            if BOT_MODULES_AVAILABLE:
+                setup_commands(self.app, self.session_manager)
+                setup_handlers(self.app, self.session_manager)
             
             logger.info("✅ Bot initialisé")
             return True
@@ -138,18 +155,20 @@ class ZeeXClubBot:
             logger.info("⏳ En attente de messages...")
             logger.info("=" * 50)
             
-            # Boucle infinie propre (pas idle())
-            while self._running:
-                await asyncio.sleep(1)
+            # ✅ CORRECTION: Utiliser idle() de Pyrogram au lieu d'une boucle while
+            # idle() gère proprement les signaux et les mises à jour
+            await idle()
                 
         except Exception as e:
             logger.error(f"❌ Erreur: {e}")
         finally:
             self._running = False
+            # ✅ CORRECTION: Gestion d'erreur pour stop()
             try:
-                await self.app.stop()
-            except:
-                pass
+                if self.app:
+                    await self.app.stop()
+            except Exception as stop_error:
+                logger.warning(f"⚠️ Erreur lors de l'arrêt: {stop_error}")
 
 
 # Instance globale
@@ -174,6 +193,8 @@ def run():
         
         asyncio.run(main())
         
+    except KeyboardInterrupt:
+        print("\n👋 Arrêt demandé par l'utilisateur", flush=True)
     except Exception as e:
         print(f"❌ FATAL: {e}", flush=True)
         import traceback

@@ -136,8 +136,9 @@ class SupabaseManager:
         client = self.service_client if use_service else self.client
         
         try:
-            result = client.table('folders').select('*').eq('id', folder_id).single().execute()
-            return result.data if result.data else None
+            # ✅ CORRECTION: Utiliser .limit(1) au lieu de .single() pour éviter l'erreur si pas de résultat
+            result = client.table('folders').select('*').eq('id', folder_id).limit(1).execute()
+            return result.data[0] if result.data else None
         except Exception as e:
             logger.error(f"❌ Erreur récupération dossier {folder_id}: {e}")
             return None
@@ -290,8 +291,9 @@ class SupabaseManager:
         client = self.service_client if use_service else self.client
         
         try:
-            result = client.table('videos').select('*').eq('id', video_id).single().execute()
-            return result.data if result.data else None
+            # ✅ CORRECTION: Utiliser .limit(1) au lieu de .single()
+            result = client.table('videos').select('*').eq('id', video_id).limit(1).execute()
+            return result.data[0] if result.data else None
         except Exception as e:
             logger.error(f"❌ Erreur récupération vidéo {video_id}: {e}")
             return None
@@ -340,8 +342,9 @@ class SupabaseManager:
         client = self.service_client if use_service else self.client
         
         try:
-            result = client.table('videos').select('*').eq('file_id', file_id).single().execute()
-            return result.data if result.data else None
+            # ✅ CORRECTION: Utiliser .limit(1) au lieu de .single()
+            result = client.table('videos').select('*').eq('file_id', file_id).limit(1).execute()
+            return result.data[0] if result.data else None
         except Exception as e:
             logger.error(f"❌ Erreur récupération vidéo par file_id: {e}")
             return None
@@ -405,8 +408,13 @@ class SupabaseManager:
         client = self.service_client if use_service else self.client
         
         try:
-            # Recherche par titre (ilike = insensible à la casse)
-            db_query = client.table('videos').select('*, folders(folder_name)').ilike('title', f'%{query}%')
+            # ✅ CORRECTION: Gérer le cas où query est vide
+            if query and query.strip():
+                # Recherche par titre (ilike = insensible à la casse)
+                db_query = client.table('videos').select('*, folders(folder_name)').ilike('title', f'%{query}%')
+            else:
+                # Si pas de query, retourner les plus récents
+                db_query = client.table('videos').select('*, folders(folder_name)').order('created_at', desc=True)
             
             # Appliquer les filtres additionnels
             if filters:
@@ -540,9 +548,11 @@ class SupabaseManager:
             return result.data[0] if result.data else None
         except Exception as e:
             # Gérer le cas où l'entrée existe déjà (contrainte UNIQUE)
-            if 'duplicate key' in str(e).lower():
+            if 'duplicate key' in str(e).lower() or '23505' in str(e):
                 logger.info(f"ℹ️ Vidéo {video_id} déjà dans la watchlist de {user_id}")
-                return None
+                # Retourner l'entrée existante
+                existing = self.client.table('watchlist').select('*').eq('user_id', user_id).eq('video_id', video_id).limit(1).execute()
+                return existing.data[0] if existing.data else None
             logger.error(f"❌ Erreur ajout watchlist: {e}")
             raise
     
@@ -557,8 +567,9 @@ class SupabaseManager:
             list: Liste des vidéos dans la watchlist
         """
         try:
+            # ✅ CORRECTION: Syntaxe de jointure correcte pour Supabase
             result = self.client.table('watchlist').select(
-                '*, videos(*)'
+                '*, video: videos(*)'
             ).eq('user_id', user_id).order('added_at', desc=True).execute()
             
             return result.data if result.data else []
@@ -625,8 +636,9 @@ class SupabaseManager:
             list: Liste de l'historique avec détails vidéo
         """
         try:
+            # ✅ CORRECTION: Syntaxe de jointure correcte et gestion des filtres
             query = self.client.table('watch_history').select(
-                '*, videos(*)'
+                '*, video: videos(*)'
             ).eq('user_id', user_id)
             
             if completed_only:
@@ -681,8 +693,9 @@ class SupabaseManager:
             dict: Mapping avec file_id ou None
         """
         try:
-            result = self.service_client.table('stream_mappings').select('*').eq('unique_id', unique_id).single().execute()
-            return result.data if result.data else None
+            # ✅ CORRECTION: Utiliser .limit(1) au lieu de .single()
+            result = self.service_client.table('stream_mappings').select('*').eq('unique_id', unique_id).limit(1).execute()
+            return result.data[0] if result.data else None
         except Exception as e:
             logger.error(f"❌ Erreur récupération stream mapping: {e}")
             return None
@@ -698,8 +711,9 @@ class SupabaseManager:
             dict: Mapping ou None
         """
         try:
-            result = self.service_client.table('stream_mappings').select('*').eq('file_id', file_id).single().execute()
-            return result.data if result.data else None
+            # ✅ CORRECTION: Utiliser .limit(1) au lieu de .single()
+            result = self.service_client.table('stream_mappings').select('*').eq('file_id', file_id).limit(1).execute()
+            return result.data[0] if result.data else None
         except Exception as e:
             logger.error(f"❌ Erreur récupération stream mapping par file_id: {e}")
             return None

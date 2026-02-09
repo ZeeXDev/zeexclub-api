@@ -8,19 +8,17 @@ import os
 import sys
 from pathlib import Path
 
-# Ajouter le backend au path
+# Build paths inside the project
 BASE_DIR = Path(__file__).resolve().parent
 
 # =============================================================================
-# IMPORT DE CONFIG (une seule fois)
+# CONFIGURATION IMPORTÉE (variables simples uniquement)
 # =============================================================================
 
 from config import (
     SECRET_KEY,
     DEBUG,
     ALLOWED_HOSTS,
-    INSTALLED_APPS as CONFIG_INSTALLED_APPS,
-    MIDDLEWARE as CONFIG_MIDDLEWARE,
     DATABASES,
     REST_FRAMEWORK,
     CORS_ALLOWED_ORIGINS,
@@ -44,7 +42,7 @@ from config import (
 )
 
 # =============================================================================
-# CONFIGURATION DJANGO
+# CONFIGURATION DJANGO (définie ici, pas importée)
 # =============================================================================
 
 SECRET_KEY = SECRET_KEY
@@ -52,7 +50,7 @@ DEBUG = DEBUG
 ALLOWED_HOSTS = ALLOWED_HOSTS
 
 # =============================================================================
-# APPLICATIONS (avec ApiConfig pour démarrer le bot)
+# APPLICATIONS DJANGO
 # =============================================================================
 
 INSTALLED_APPS = [
@@ -64,18 +62,26 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'corsheaders',
     'rest_framework',
-    'api',  # ← Utilise ApiConfig pour démarrer le bot
+    'api.apps.ApiConfig',  # Utilise la classe AppConfig explicite
 ]
 
 # =============================================================================
-# MIDDLEWARE (ajout des middlewares custom)
+# MIDDLEWARE (ordre important!)
 # =============================================================================
 
 MIDDLEWARE = [
-    'api.middleware.CORSMiddleware',
-    'api.middleware.LoggingMiddleware',
-    'api.middleware.SupabaseAuthMiddleware',
-] + CONFIG_MIDDLEWARE
+    'corsheaders.middleware.CorsMiddleware',  # CORS en premier
+    'api.middleware.CORSMiddleware',  # Notre middleware CORS custom (complément)
+    'api.middleware.LoggingMiddleware',  # Logging avant auth
+    'api.middleware.SupabaseAuthMiddleware',  # Auth Supabase
+    'django.middleware.security.SecurityMiddleware',
+    'django.contrib.sessions.middleware.SessionMiddleware',
+    'django.middleware.common.CommonMiddleware',
+    'django.middleware.csrf.CsrfViewMiddleware',
+    'django.contrib.auth.middleware.AuthenticationMiddleware',
+    'django.contrib.messages.middleware.MessageMiddleware',
+    'django.middleware.clickjacking.XFrameOptionsMiddleware',
+]
 
 # =============================================================================
 # URLS & WSGI

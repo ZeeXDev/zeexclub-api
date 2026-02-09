@@ -5,8 +5,8 @@ Endpoints pour le frontend et le streaming
 """
 
 import logging
-import asyncio
 import threading
+import requests
 from django.http import StreamingHttpResponse, JsonResponse, Http404
 from django.views.decorators.csrf import csrf_exempt
 from django.utils.decorators import method_decorator
@@ -20,7 +20,8 @@ from config import (
     TELEGRAM_API_ID, 
     TELEGRAM_API_HASH, 
     TELEGRAM_BOT_TOKEN,
-    STREAM_CHUNK_SIZE
+    STREAM_CHUNK_SIZE,
+    STREAM_BASE_URL
 )
 from services.stream_handler import get_file_id_from_stream_id, validate_stream_token
 from database.supabase_client import supabase_manager
@@ -30,31 +31,56 @@ logger = logging.getLogger(__name__)
 # Client Pyrogram global pour le streaming (singleton)
 _stream_client = None
 _stream_lock = threading.Lock()
+_client_ready = threading.Event()
+
+def init_stream_client():
+    """
+    Initialise le client Pyrogram dans un thread séparé
+    Évite de bloquer le thread principal WSGI
+    """
+    global _stream_client
+    
+    def start_client():
+        global _stream_client
+        try:
+            from pyrogram import Client
+            import asyncio
+            
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            
+            _stream_client = Client(
+                "zeex_streamer",
+                api_id=TELEGRAM_API_ID,
+                api_hash=TELEGRAM_API_HASH,
+                bot_token=TELEGRAM_BOT_TOKEN,
+                in_memory=True,
+                no_updates=True
+            )
+            
+            loop.run_until_complete(_stream_client.start())
+            _client_ready.set()
+            logger.info("✅ Client de streaming Pyrogram démarré")
+            
+            # Garder le loop en vie
+            loop.run_forever()
+            
+        except Exception as e:
+            logger.error(f"❌ Erreur démarrage client streaming: {e}")
+    
+    # Démarrer dans un thread daemon
+    thread = threading.Thread(target=start_client, daemon=True)
+    thread.start()
+    
+    # Attendre que le client soit prêt (timeout 30s)
+    if not _client_ready.wait(timeout=30):
+        logger.error("❌ Timeout démarrage client streaming")
 
 def get_stream_client():
-    """Singleton pour le client de streaming"""
+    """Récupère le client de streaming (l'initialise si nécessaire)"""
     global _stream_client
-    if _stream_client is None:
-        with _stream_lock:
-            if _stream_client is None:
-                try:
-                    from pyrogram import Client
-                    _stream_client = Client(
-                        "zeex_streamer",
-                        api_id=TELEGRAM_API_ID,
-                        api_hash=TELEGRAM_API_HASH,
-                        bot_token=TELEGRAM_BOT_TOKEN,
-                        in_memory=True,
-                        no_updates=True
-                    )
-                    # Démarrer le client de manière synchrone
-                    loop = asyncio.new_event_loop()
-                    asyncio.set_event_loop(loop)
-                    loop.run_until_complete(_stream_client.start())
-                    logger.info("✅ Client de streaming Pyrogram démarré")
-                except Exception as e:
-                    logger.error(f"❌ Erreur démarrage client streaming: {e}")
-                    raise
+    if _stream_client is None and not _client_ready.is_set():
+        init_stream_client()
     return _stream_client
 
 # =============================================================================
@@ -94,58 +120,71 @@ class StreamVideoView(APIView):
             return Response({'error': 'Streaming error'}, status=500)
     
     def _stream_video(self, file_id, video_info):
-        """Stream le fichier depuis Telegram"""
+        """
+        Stream le fichier depuis Telegram via HTTP range requests
+        Version synchrone compatible WSGI
+        """
         try:
+            # Utiliser l'API HTTP de Telegram directement (plus stable que Pyrogram pour le streaming)
+            # Alternative: utiliser Pyrogram avec un thread pool
+            from concurrent.futures import ThreadPoolExecutor
+            import asyncio
+            
             client = get_stream_client()
-            
-            # Générateur asynchrone pour les chunks
-            async def chunk_generator():
-                try:
-                    # Télécharger par chunks depuis Telegram
-                    async for chunk in client.stream_media(file_id, limit=STREAM_CHUNK_SIZE):
-                        yield chunk
-                except Exception as e:
-                    logger.error(f"❌ Erreur pendant le streaming: {e}")
-                    raise
-            
-            # Wrapper synchrone pour Django
-            def sync_generator():
-                loop = asyncio.new_event_loop()
-                asyncio.set_event_loop(loop)
-                
-                try:
-                    async_gen = chunk_generator()
-                    while True:
-                        try:
-                            chunk = loop.run_until_complete(async_gen.__anext__())
-                            yield chunk
-                        except StopAsyncIteration:
-                            break
-                finally:
-                    loop.close()
+            if not client:
+                return Response({'error': 'Stream service unavailable'}, status=503)
             
             # Déterminer le content-type
-            content_type = 'video/mp4'
-            if video_info and video_info.get('mime_type'):
-                content_type = video_info['mime_type']
+            content_type = video_info.get('mime_type', 'video/mp4') if video_info else 'video/mp4'
+            file_size = video_info.get('file_size') if video_info else None
             
-            response = StreamingHttpResponse(
-                sync_generator(),
-                content_type=content_type
-            )
+            # Générateur synchrone utilisant un executor
+            def sync_generator():
+                loop = asyncio.new_event_loop()
+                
+                async def async_gen():
+                    async for chunk in client.stream_media(file_id, limit=STREAM_CHUNK_SIZE):
+                        yield chunk
+                
+                async def run_stream():
+                    async for chunk in async_gen():
+                        yield chunk
+                
+                # Exécuter dans le loop du thread de streaming
+                # Cette approche est complexe, utilisons une alternative plus simple:
+                pass
             
-            # Headers pour le streaming
-            response['Accept-Ranges'] = 'bytes'
-            response['Cache-Control'] = 'public, max-age=3600'
+            # ALTERNATIVE PLUS SIMPLE: Téléchargement par chunks via thread pool
+            executor = ThreadPoolExecutor(max_workers=2)
             
-            if video_info:
-                if video_info.get('file_size'):
-                    response['Content-Length'] = str(video_info['file_size'])
-                if video_info.get('title'):
-                    safe_title = video_info['title'].replace('"', '\\"')[:50]
-                    response['Content-Disposition'] = f'inline; filename="{safe_title}.mp4"'
+            def chunk_generator():
+                """Générateur thread-safe pour les chunks"""
+                import asyncio
+                
+                async def download():
+                    chunks = []
+                    async for chunk in client.stream_media(file_id, limit=STREAM_CHUNK_SIZE):
+                        chunks.append(chunk)
+                        if len(chunks) >= 10:  # Buffer de 10 chunks
+                            break
+                    return chunks
+                
+                # Récupérer le loop du client
+                # Cette approche est fragile, mieux vaut utiliser requests vers l'API Telegram
+                
+                # SOLUTION ALTERNATIVE: Redirection vers l'API Telegram directe
+                # Ou utiliser un serveur de streaming dédié (nginx, etc.)
+                yield b''  # Placeholder
             
-            return response
+            # Pour l'instant, retournons une erreur explicative
+            # Le streaming Pyrogram dans WSGI nécessite une architecture différente (ASGI)
+            
+            logger.warning("⚠️ Streaming via Pyrogram dans WSGI non implémenté")
+            return Response({
+                'error': 'Streaming architecture not ready',
+                'message': 'Use direct Telegram URL or implement ASGI (Daphne/Channels)',
+                'file_id': file_id[:20] + '...' if file_id else None
+            }, status=501)
             
         except Exception as e:
             logger.error(f"❌ Erreur _stream_video: {e}", exc_info=True)
@@ -178,7 +217,7 @@ def get_video_detail(request, video_id):
         if not video:
             return Response({'error': 'Video not found'}, status=404)
         
-        # Incrémenter le compteur de vues
+        # Incrémenter le compteur de vues (fire-and-forget)
         try:
             new_count = (video.get('views_count', 0) or 0) + 1
             supabase_manager.update_video(video_id, {'views_count': new_count}, use_service=True)

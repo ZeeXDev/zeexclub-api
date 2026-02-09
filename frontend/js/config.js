@@ -4,13 +4,23 @@
  */
 
 const CONFIG = {
-    // URLs API
-    API_BASE_URL: window.location.hostname === 'localhost' 
-        ? 'http://localhost:8000/api' 
-        : 'https://zeexclub-api.onrender.com/api',
+    // URLs API - ✅ CORRECTION: Détection plus robuste de l'environnement
+    API_BASE_URL: (() => {
+        // En local (localhost ou IP locale)
+        if (window.location.hostname === 'localhost' || 
+            window.location.hostname === '127.0.0.1' ||
+            window.location.hostname.startsWith('192.168.') ||
+            window.location.hostname.startsWith('10.')) {
+            return 'http://localhost:8000/api';
+        }
+        // Production (Vercel, Netlify, etc.)
+        return 'https://zeexclub-api.onrender.com/api';
+    })(),
     
-    SUPABASE_URL: 'https://votre-projet.supabase.co',
-    SUPABASE_ANON_KEY: 'votre-cle-anon',
+    // ✅ CORRECTION: Clés Supabase depuis les variables d'environnement ou valeurs par défaut
+    // En production, ces valeurs devraient être injectées par le build ou le serveur
+    SUPABASE_URL: window.__ENV__?.SUPABASE_URL || 'https://hxdtaqnfnpzqndhqiopi.supabase.co',
+    SUPABASE_ANON_KEY: window.__ENV__?.SUPABASE_ANON_KEY || 'sb_publishable_LKwjDQ-9Oy9gvpO29YWlCg_vsY7xuyW',
     
     // Configuration TMDB (public)
     TMDB_IMAGE_BASE_URL: 'https://image.tmdb.org/t/p',
@@ -28,7 +38,13 @@ const CONFIG = {
     VERSION: '1.0.0'
 };
 
-// Export pour modules
-if (typeof module !== 'undefined' && module.exports) {
-    module.exports = CONFIG;
+// ✅ CORRECTION: Export ES module standard pour le frontend
+export default CONFIG;
+
+// Export nommé pour compatibilité
+export { CONFIG };
+
+// Pour compatibilité avec les scripts non-module (rare mais possible)
+if (typeof window !== 'undefined') {
+    window.ZEEX_CONFIG = CONFIG;
 }

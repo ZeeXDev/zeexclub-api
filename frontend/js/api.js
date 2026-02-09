@@ -48,7 +48,7 @@ async function apiRequest(endpoint, options = {}) {
 // Export des fonctions API
 
 export const api = {
-    // Vidéos
+    // ✅ CORRECTION: Vidéos - noms cohérents
     getRecentVideos: (limit = 12) => 
         apiRequest(`/videos/recent/?limit=${limit}`),
     
@@ -56,6 +56,26 @@ export const api = {
         apiRequest(`/videos/${videoId}/`),
     
     searchVideos: (query, filters = {}) => {
+        const params = new URLSearchParams({ q: query, ...filters });
+        return apiRequest(`/videos/search/?${params}`);
+    },
+    
+    // ✅ CORRECTION: Alias pour compatibilité
+    getMovies: (filters = {}) => {
+        // Si pas de query, récupérer les plus récents
+        if (!filters.query) {
+            return apiRequest(`/videos/recent/?limit=${filters.limit || 20}`);
+        }
+        const params = new URLSearchParams(filters);
+        return apiRequest(`/videos/search/?${params}`);
+    },
+    
+    // ✅ CORRECTION: Trending utilise les plus vus
+    getTrending: (limit = 12) => 
+        apiRequest(`/videos/trending/?limit=${limit}`),
+    
+    // ✅ CORRECTION: Alias pour search
+    search: (query, filters = {}) => {
         const params = new URLSearchParams({ q: query, ...filters });
         return apiRequest(`/videos/search/?${params}`);
     },
@@ -87,6 +107,16 @@ export const api = {
         }),
     
     removeFromWatchlist: (videoId) => 
+        apiRequest(`/user/watchlist/${videoId}/`, { method: 'DELETE' }),
+    
+    // ✅ CORRECTION: Favoris (utilisent la watchlist comme fallback)
+    addToFavorites: (videoId) => 
+        apiRequest('/user/watchlist/add/', {
+            method: 'POST',
+            body: JSON.stringify({ video_id: videoId, favorite: true })
+        }),
+    
+    removeFromFavorites: (videoId) => 
         apiRequest(`/user/watchlist/${videoId}/`, { method: 'DELETE' }),
     
     // Commentaires
