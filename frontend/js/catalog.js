@@ -1,6 +1,7 @@
 // frontend/js/catalog.js
 /**
- * Logique spécifique au catalogue
+ * Logique spécifique au catalogue - VERSION NETFLIX
+ * Recherche de SÉRIES/FILMS (dossiers) pas d'épisodes individuels
  */
 
 import api from './api.js';
@@ -9,13 +10,10 @@ import { createMovieCard, showToast, handleApiError, debounce } from './utils.js
 class CatalogManager {
     constructor() {
         this.filters = {
-            category: 'all',
-            type: 'all',
-            year: 'all',
-            quality: 'all',
+            type: 'all',        // 'all', 'movie', 'tv'
+            genre: null,
+            year: null,
             rating: 0,
-            genres: [],
-            sort: 'popularity',
             query: ''
         };
         this.page = 1;
@@ -24,25 +22,28 @@ class CatalogManager {
     }
     
     init() {
-        this.loadMovies();
+        this.loadSeries();
         this.initInfiniteScroll();
         this.initFilters();
     }
     
-    async loadMovies(append = false) {
+    /**
+     * ✅ NOUVEAU: Charge les SÉRIES/FILMS (dossiers) pas les épisodes
+     */
+    async loadSeries(append = false) {
         if (this.isLoading) return;
         this.isLoading = true;
         
         try {
-            // ✅ CORRECTION: Utiliser la bonne fonction API
-            const response = await api.getMovies({
-                ...this.filters,
-                page: this.page,
+            const result = await api.searchFolders(this.filters.query, {
+                type: this.filters.type === 'all' ? null : this.filters.type,
+                genre: this.filters.genre,
+                year: this.filters.year,
                 limit: 20
             });
             
-            this.renderMovies(response.data || [], append);
-            this.updateResultsCount(response.total || (response.data || []).length);
+            this.renderSeriesCards(result.results || [], append);
+            this.updateResultsCount(result.count || 0);
             
         } catch (error) {
             handleApiError(error);
@@ -51,7 +52,10 @@ class CatalogManager {
         }
     }
     
-    renderMovies(movies, append = false) {
+    /**
+     * ✅ NOUVEAU: Rend les cartes de SÉRIES (pas d'épisodes)
+     */
+    renderSeriesCards(series, append = false) {
         const grid = document.getElementById('catalog-grid');
         if (!grid) return;
         
@@ -60,7 +64,7 @@ class CatalogManager {
             grid.innerHTML = '';
         }
         
-        if (!movies || movies.length === 0) {
+        if (!series || series.length === 0) {
             if (!append) {
                 grid.innerHTML = `
                     <div class="empty-catalog">
@@ -76,44 +80,59 @@ class CatalogManager {
             return;
         }
         
-        // ✅ CORRECTION: Utiliser createMovieCard correctement (HTMLElement)
-        movies.forEach((movie, index) => {
-            const card = createMovieCard(movie, {
-                onClick: () => {
-                    window.location.href = `player.html?id=${movie.id}`;
-                }
-            });
-            
+        series.forEach((item, index) => {
+            const card = this.createSeriesCard(item, index);
             if (card) {
-                card.style.animationDelay = `${index * 0.05}s`;
                 grid.appendChild(card);
             }
         });
     }
     
+    /**
+     * ✅ NOUVEAU: Crée une carte de SÉRIE/FILM (redirige vers details.html)
+     */
+    createSeriesCard(series, index) {
+        const card = document.createElement('div');
+        card.className = 'series-card';
+        card.style.animationDelay = `${index * 0.05}s`;
+        
+        const posterUrl = series.poster_url || series.poster_url_small || '/img/default-poster.png';
+        const title = series.title || series.folder_name;
+        const isSeries = series.has_subfolders || series.season_count > 0;
+        
+        card.innerHTML = `
+            <div class="card-image">
+                <img src="${posterUrl}" alt="${escapeHtml(title)}" loading="lazy">
+                <div class="card-overlay">
+                    <button class="info-btn">
+                        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+                    </button>
+                </div>
+                ${isSeries ? '<span class="series-badge">SÉRIE</span>' : '<span class="movie-badge">FILM</span>'}
+            </div>
+            <div class="card-content">
+                <h3 class="card-title">${escapeHtml(title)}</h3>
+                <div class="card-meta">
+                    ${series.year ? `<span class="card-year">${series.year}</span>` : ''}
+                    ${series.rating ? `<span class="card-rating">⭐ ${series.rating.toFixed(1)}</span>` : ''}
+                    ${isSeries ? `<span class="card-episodes">${series.total_episodes || 0} épisodes</span>` : ''}
+                </div>
+                ${series.genres ? `<div class="card-genres">${series.genres.slice(0, 3).join(' • ')}</div>` : ''}
+            </div>
+        `;
+        
+        // ✅ Redirection vers la page de détails (pas le player directement)
+        card.addEventListener('click', () => {
+            window.location.href = `details.html?id=${series.id}`;
+        });
+        
+        return card;
+    }
+    
     updateResultsCount(total) {
         const el = document.getElementById('results-total');
         if (el) {
-            // Animation du compteur
-            const start = parseInt(el.textContent.replace(/[^\d]/g, '')) || 0;
-            const end = total || 0;
-            const duration = 500;
-            const startTime = performance.now();
-            
-            const animate = (currentTime) => {
-                const elapsed = currentTime - startTime;
-                const progress = Math.min(elapsed / duration, 1);
-                const easeProgress = 1 - Math.pow(1 - progress, 3);
-                const current = Math.round(start + (end - start) * easeProgress);
-                
-                el.textContent = current.toLocaleString();
-                
-                if (progress < 1) {
-                    requestAnimationFrame(animate);
-                }
-            };
-            
-            requestAnimationFrame(animate);
+            el.textContent = total.toLocaleString();
         }
     }
     
@@ -122,12 +141,11 @@ class CatalogManager {
             entries.forEach(entry => {
                 if (entry.isIntersecting && !this.isLoading) {
                     this.page++;
-                    this.loadMovies(true);
+                    this.loadSeries(true);
                 }
             });
         }, { rootMargin: '100px' });
         
-        // Observer un élément sentinelle à la fin de la grille
         const sentinel = document.createElement('div');
         sentinel.id = 'scroll-sentinel';
         sentinel.style.height = '10px';
@@ -136,14 +154,14 @@ class CatalogManager {
     }
     
     initFilters() {
-        // Initialiser les écouteurs de filtres
-        document.querySelectorAll('.filter-chip').forEach(chip => {
+        // Filtre type (Film/Série/Tout)
+        document.querySelectorAll('.filter-type').forEach(chip => {
             chip.addEventListener('click', (e) => {
-                document.querySelectorAll('.filter-chip').forEach(c => c.classList.remove('active'));
+                document.querySelectorAll('.filter-type').forEach(c => c.classList.remove('active'));
                 e.target.classList.add('active');
                 
-                const filterType = e.target.dataset.filter;
-                this.updateFilter('type', filterType === 'all' ? null : filterType);
+                const type = e.target.dataset.type; // 'all', 'movie', 'tv'
+                this.updateFilter('type', type);
             });
         });
         
@@ -159,7 +177,7 @@ class CatalogManager {
     updateFilter(key, value) {
         this.filters[key] = value;
         this.page = 1;
-        this.loadMovies();
+        this.loadSeries();
     }
 }
 
@@ -167,3 +185,11 @@ class CatalogManager {
 document.addEventListener('DOMContentLoaded', () => {
     window.catalogManager = new CatalogManager();
 });
+
+// Helper
+function escapeHtml(text) {
+    if (!text) return '';
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}

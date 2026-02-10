@@ -7,6 +7,7 @@ Endpoints pour le frontend et le streaming
 import logging
 import threading
 import requests
+import re
 from django.http import StreamingHttpResponse, JsonResponse, Http404
 from django.views.decorators.csrf import csrf_exempt
 from django.utils.decorators import method_decorator
@@ -288,6 +289,257 @@ def get_all_folders(request):
     except Exception as e:
         logger.error(f"❌ Erreur get_all_folders: {e}")
         return Response({'error': str(e)}, status=500)
+
+
+# =============================================================================
+# NOUVEAUX ENDPOINTS NETFLIX-STYLE (Séries → Saisons → Épisodes)
+# =============================================================================
+
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def search_folders_netflix(request):
+    """
+    Recherche de SÉRIES/FILMS (dossiers) - pas d'épisodes individuels
+    GET /api/search?q=loki
+    """
+    try:
+        query = request.query_params.get('q', '').strip()
+        genre = request.query_params.get('genre')
+        year = request.query_params.get('year')
+        media_type = request.query_params.get('type')  # 'movie', 'tv', ou None
+        limit = int(request.query_params.get('limit', 20))
+        
+        # Base query : dossiers racine uniquement (parent_id IS NULL)
+        db_query = supabase_manager.service_client.table('folders').select('*').is_('parent_id', 'null')
+        
+        # Filtre recherche par nom
+        if query:
+            # Recherche insensible à la casse sur folder_name OU title (TMDB)
+            db_query = db_query.or_(f"folder_name.ilike.%{query}%,title.ilike.%{query}%")
+        
+        # Filtre genre (si enrichi TMDB)
+        if genre:
+            db_query = db_query.contains('genres', [genre])
+        
+        # Filtre année
+        if year:
+            db_query = db_query.eq('year', int(year))
+        
+        # Filtre type (movie/tv) si enrichi TMDB
+        if media_type:
+            db_query = db_query.eq('media_type', media_type)
+        
+        # Trier par date création (plus récent d'abord)
+        result = db_query.order('created_at', desc=True).limit(limit).execute()
+        
+        folders = result.data if result.data else []
+        
+        # Enrichir avec compteur de vidéos/saisons
+        for folder in folders:
+            # Compter sous-dossiers (saisons)
+            subfolders = supabase_manager.get_subfolders(folder['id'])
+            folder['season_count'] = len(subfolders)
+            
+            # Compter vidéos totales (toutes saisons confondues)
+            total_videos = supabase_manager.get_videos_by_folder(folder['id'])
+            # + vidéos dans sous-dossiers
+            for sub in subfolders:
+                total_videos.extend(supabase_manager.get_videos_by_folder(sub['id']))
+            
+            folder['total_episodes'] = len(total_videos)
+            folder['has_subfolders'] = len(subfolders) > 0
+        
+        return Response({
+            'success': True,
+            'query': query,
+            'count': len(folders),
+            'results': folders
+        })
+        
+    except Exception as e:
+        logger.error(f"❌ Erreur search_folders: {e}")
+        return Response({'error': str(e)}, status=500)
+
+
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def get_folder_details_netflix(request, folder_id):
+    """
+    Récupère détails d'une série/film avec structure saisons/épisodes
+    GET /api/folders/{folder_id}/details/
+    """
+    try:
+        # 1. Récupérer le dossier principal
+        folder = supabase_manager.get_folder_by_id(folder_id)
+        if not folder:
+            return Response({'error': 'Dossier introuvable'}, status=404)
+        
+        # 2. Récupérer sous-dossiers (saisons) s'ils existent
+        subfolders = supabase_manager.get_subfolders(folder_id)
+        
+        # Structure de réponse
+        response_data = {
+            'folder': folder,
+            'is_series': len(subfolders) > 0,
+            'seasons': []
+        }
+        
+        if subfolders:
+            # C'est une série avec saisons
+            for subfolder in subfolders:
+                season_num = extract_season_number(subfolder['folder_name'])
+                
+                # Récupérer épisodes de cette saison
+                episodes = supabase_manager.get_videos_by_folder(subfolder['id'])
+                
+                # Trier par numéro d'épisode
+                episodes.sort(key=lambda x: x.get('episode_number') or 0)
+                
+                season_data = {
+                    'season_id': subfolder['id'],
+                    'season_name': subfolder['folder_name'],
+                    'season_number': season_num,
+                    'episode_count': len(episodes),
+                    'episodes': episodes,
+                    'poster_url': subfolder.get('season_poster') or folder.get('poster_url')
+                }
+                
+                response_data['seasons'].append(season_data)
+            
+            # Trier saisons par numéro
+            response_data['seasons'].sort(key=lambda x: x['season_number'] or 0)
+            
+        else:
+            # C'est un film ou série sans structure de saisons
+            # Récupérer vidéos directement dans le dossier
+            videos = supabase_manager.get_videos_by_folder(folder_id)
+            videos.sort(key=lambda x: (x.get('season_number') or 0, x.get('episode_number') or 0))
+            
+            response_data['episodes'] = videos
+            response_data['episode_count'] = len(videos)
+        
+        return Response({
+            'success': True,
+            'data': response_data
+        })
+        
+    except Exception as e:
+        logger.error(f"❌ Erreur get_folder_details: {e}")
+        return Response({'error': str(e)}, status=500)
+
+
+def extract_season_number(folder_name: str):
+    """Extrait le numéro de saison d'un nom de dossier"""
+    patterns = [
+        r'saison\s*(\d+)',
+        r'season\s*(\d+)',
+        r's(\d+)',
+        r'(\d+)'
+    ]
+    for pattern in patterns:
+        match = re.search(pattern, folder_name, re.IGNORECASE)
+        if match:
+            try:
+                return int(match.group(1))
+            except:
+                pass
+    return None
+
+
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def get_episode_details(request, video_id):
+    """
+    Récupère détails d'un épisode spécifique avec liens de streaming
+    GET /api/episodes/{video_id}/
+    """
+    try:
+        video = supabase_manager.get_video_by_id(video_id)
+        if not video:
+            return Response({'error': 'Épisode introuvable'}, status=404)
+        
+        # Récupérer infos du dossier parent (série/saison)
+        folder = supabase_manager.get_folder_by_id(video['folder_id'])
+        series_name = "Inconnu"
+        season_number = None
+        
+        if folder:
+            if folder.get('parent_id'):
+                # C'est un sous-dossier (saison), récupérer la série parente
+                season_number = extract_season_number(folder['folder_name'])
+                series = supabase_manager.get_folder_by_id(folder['parent_id'])
+                series_name = series.get('title') or series.get('folder_name') if series else "Inconnu"
+            else:
+                series_name = folder.get('title') or folder.get('folder_name')
+        
+        # Construire réponse enrichie
+        episode_data = {
+            **video,
+            'series_name': series_name,
+            'season_number': season_number or video.get('season_number'),
+            'stream_urls': {
+                'zeex': video.get('zeex_url'),
+                'filemoon': video.get('filemoon_url')
+            },
+            'next_episode': get_adjacent_episode(video, 'next'),
+            'prev_episode': get_adjacent_episode(video, 'prev')
+        }
+        
+        return Response({
+            'success': True,
+            'data': episode_data
+        })
+        
+    except Exception as e:
+        logger.error(f"❌ Erreur get_episode: {e}")
+        return Response({'error': str(e)}, status=500)
+
+
+def get_adjacent_episode(current_video: dict, direction: str) -> dict:
+    """Récupère l'épisode précédent ou suivant"""
+    try:
+        folder_id = current_video['folder_id']
+        current_ep = current_video.get('episode_number', 0)
+        current_season = current_video.get('season_number', 0)
+        
+        # Récupérer tous les épisodes du même dossier
+        episodes = supabase_manager.get_videos_by_folder(folder_id)
+        
+        # Trier par saison puis épisode
+        episodes.sort(key=lambda x: (x.get('season_number') or 0, x.get('episode_number') or 0))
+        
+        # Trouver index actuel
+        current_index = None
+        for i, ep in enumerate(episodes):
+            if ep['id'] == current_video['id']:
+                current_index = i
+                break
+        
+        if current_index is None:
+            return None
+        
+        if direction == 'next' and current_index < len(episodes) - 1:
+            next_ep = episodes[current_index + 1]
+            return {
+                'id': next_ep['id'],
+                'title': next_ep['title'],
+                'episode_number': next_ep.get('episode_number'),
+                'season_number': next_ep.get('season_number')
+            }
+        elif direction == 'prev' and current_index > 0:
+            prev_ep = episodes[current_index - 1]
+            return {
+                'id': prev_ep['id'],
+                'title': prev_ep['title'],
+                'episode_number': prev_ep.get('episode_number'),
+                'season_number': prev_ep.get('season_number')
+            }
+        
+        return None
+        
+    except Exception as e:
+        logger.error(f"Erreur adjacent episode: {e}")
+        return None
 
 
 # =============================================================================

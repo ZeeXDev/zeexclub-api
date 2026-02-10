@@ -48,7 +48,9 @@ async function apiRequest(endpoint, options = {}) {
 // Export des fonctions API
 
 export const api = {
-    // ✅ CORRECTION: Vidéos - noms cohérents
+    baseUrl: CONFIG.API_BASE_URL,
+    
+    // ========== ANCIENS ENDPOINTS (compatibilité) ==========
     getRecentVideos: (limit = 12) => 
         apiRequest(`/videos/recent/?limit=${limit}`),
     
@@ -60,9 +62,7 @@ export const api = {
         return apiRequest(`/videos/search/?${params}`);
     },
     
-    // ✅ CORRECTION: Alias pour compatibilité
     getMovies: (filters = {}) => {
-        // Si pas de query, récupérer les plus récents
         if (!filters.query) {
             return apiRequest(`/videos/recent/?limit=${filters.limit || 20}`);
         }
@@ -70,24 +70,43 @@ export const api = {
         return apiRequest(`/videos/search/?${params}`);
     },
     
-    // ✅ CORRECTION: Trending utilise les plus vus
     getTrending: (limit = 12) => 
         apiRequest(`/videos/trending/?limit=${limit}`),
     
-    // ✅ CORRECTION: Alias pour search
     search: (query, filters = {}) => {
         const params = new URLSearchParams({ q: query, ...filters });
         return apiRequest(`/videos/search/?${params}`);
     },
     
-    // Dossiers
     getAllFolders: () => 
         apiRequest('/folders/'),
     
     getFolderContents: (folderId) => 
         apiRequest(`/folders/${folderId}/`),
     
-    // Historique et Watchlist (authentifié)
+    // ========== NOUVEAUX ENDPOINTS NETFLIX-STYLE ==========
+    
+    /**
+     * Recherche de séries/films (dossiers) - pas d'épisodes individuels
+     */
+    searchFolders: (query, filters = {}) => {
+        const params = new URLSearchParams({ q: query, ...filters });
+        return apiRequest(`/search/?${params}`);
+    },
+    
+    /**
+     * Détails d'une série/film avec saisons et épisodes
+     */
+    getFolderDetails: (folderId) => 
+        apiRequest(`/folders/${folderId}/details/`),
+    
+    /**
+     * Détails d'un épisode spécifique avec next/prev
+     */
+    getEpisodeDetails: (videoId) => 
+        apiRequest(`/episodes/${videoId}/`),
+    
+    // ========== USER (inchangé) ==========
     getWatchHistory: (completed = false) => 
         apiRequest(`/user/history/?completed=${completed}`),
     
@@ -109,7 +128,6 @@ export const api = {
     removeFromWatchlist: (videoId) => 
         apiRequest(`/user/watchlist/${videoId}/`, { method: 'DELETE' }),
     
-    // ✅ CORRECTION: Favoris (utilisent la watchlist comme fallback)
     addToFavorites: (videoId) => 
         apiRequest('/user/watchlist/add/', {
             method: 'POST',
@@ -119,7 +137,7 @@ export const api = {
     removeFromFavorites: (videoId) => 
         apiRequest(`/user/watchlist/${videoId}/`, { method: 'DELETE' }),
     
-    // Commentaires
+    // ========== COMMENTAIRES ==========
     getComments: (videoId, limit = 50) => 
         apiRequest(`/comments/${videoId}/?limit=${limit}`),
     
@@ -129,7 +147,7 @@ export const api = {
             body: JSON.stringify({ video_id: videoId, text })
         }),
     
-    // TMDB
+    // ========== TMDB ==========
     enrichFolder: (folderId) => 
         apiRequest(`/tmdb/enrich/${folderId}/`, { method: 'POST' }),
     
@@ -139,7 +157,7 @@ export const api = {
         return apiRequest(`/tmdb/search/?${params}`);
     },
     
-    // Health check
+    // ========== Health ==========
     healthCheck: () => 
         apiRequest('/health/')
 };
