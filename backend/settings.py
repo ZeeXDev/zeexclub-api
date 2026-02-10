@@ -62,7 +62,6 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'corsheaders',
     'rest_framework',
-    'api.apps.ApiConfig',  # Utilise la classe AppConfig explicite
 ]
 
 # =============================================================================
