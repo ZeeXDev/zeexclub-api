@@ -15,6 +15,7 @@ urlpatterns = [
     
     # ========== ANCIENS ENDPOINTS (gardés pour compatibilité) ==========
     path('videos/recent/', views.get_recent_videos, name='recent_videos'),
+    path('videos/trending/', views.get_trending_videos, name='trending_videos'),
     path('videos/search/', views.search_videos, name='search_videos'),
     path('videos/<str:video_id>/', views.get_video_detail, name='video_detail'),
     path('folders/', views.get_all_folders, name='all_folders'),

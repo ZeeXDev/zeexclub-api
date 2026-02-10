@@ -6,6 +6,9 @@ Gestion des fichiers vidéo, textes, et interactions inline
 
 import logging
 import asyncio
+import tempfile
+import os
+from pathlib import Path
 from pyrogram import Client, filters
 from pyrogram.types import Message, CallbackQuery, InlineKeyboardMarkup, InlineKeyboardButton
 from config import ADMIN_IDS
@@ -108,7 +111,7 @@ def setup_handlers(app: Client, session_manager: SessionManager):
             await message.reply(f"❌ **Erreur:** `{str(e)[:100]}`")
     
     # =========================================================================
-    # HANDLER FICHIERS VIDÉO
+    # HANDLER FICHIERS VIDÉO - VERSION CORRIGÉE AVEC UPLOAD FILEMOON
     # =========================================================================
     
     @app.on_message((filters.video | filters.document) & filters.user(ADMIN_IDS))
@@ -129,18 +132,25 @@ def setup_handlers(app: Client, session_manager: SessionManager):
             video = message.video
             file_id = video.file_id
             file_size = video.file_size
-            duration = video.duration
-            width = video.width
-            height = video.height
-            mime_type = video.mime_type
+            # ⚠️ Ces champs peuvent être None depuis Telegram !
+            duration = video.duration or 0
+            width = video.width or 0
+            height = video.height or 0
+            mime_type = video.mime_type or 'video/mp4'
+            
+            # Log pour debug
+            if duration == 0:
+                logger.warning(f"⚠️ Durée non fournie par Telegram pour {file_id[:20]}...")
+                
         elif message.document and message.document.mime_type and 'video' in message.document.mime_type:
             video = message.document
             file_id = video.file_id
             file_size = video.file_size
-            duration = 0  # Documents sans métadonnées vidéo
+            # Documents = pas de métadonnées vidéo du tout
+            duration = 0
             width = 0
             height = 0
-            mime_type = video.mime_type
+            mime_type = video.mime_type or 'video/mp4'
         else:
             await message.reply("❌ **Fichier non reconnu comme vidéo**\n\nEnvoyez un fichier vidéo valide.")
             return
@@ -160,26 +170,95 @@ def setup_handlers(app: Client, session_manager: SessionManager):
         status_msg = await message.reply("⏳ **Traitement en cours...**")
         
         try:
-            # Étape 1: Générer le lien de streaming ZeeX
+            # Étape 1: Générer le lien de streaming ZeeX (toujours fait)
             await status_msg.edit_text("🔧 **Génération du lien de streaming...**")
             stream_link = generate_stream_link(file_id)
             
-            # Étape 2: Upload Filemoon (asynchrone avec timeout)
+            # ============================================================================
+            # Étape 2: UPLOAD FILEMOON - VERSION CORRIGÉE AVEC TÉLÉCHARGEMENT DIRECT
+            # ============================================================================
             filemoon_link = None
+            temp_file_path = None
+            
             try:
-                await status_msg.edit_text("☁️ **Upload vers Filemoon en cours...**\n_Cela peut prendre plusieurs minutes pour les gros fichiers_")
-                
-                # Timeout de 10 minutes pour l'upload
-                filemoon_link = await asyncio.wait_for(
-                    upload_to_filemoon_async(stream_link),
-                    timeout=600
+                await status_msg.edit_text(
+                    "☁️ **Upload vers Filemoon en cours...**\n"
+                    "⬇️ Téléchargement depuis Telegram...\n"
+                    "_Cette étape peut prendre plusieurs minutes_"
                 )
+                
+                # CRÉER UN FICHIER TEMPORAIRE POUR STOCKER LA VIDÉO
+                temp_dir = tempfile.gettempdir()
+                safe_title = "".join(c for c in clean_title if c.isalnum() or c in (' ', '-', '_')).rstrip()
+                if not safe_title:
+                    safe_title = f"video_{file_id[:10]}"
+                
+                # Extension selon le mime_type
+                ext = '.mp4'
+                if 'mkv' in mime_type:
+                    ext = '.mkv'
+                elif 'avi' in mime_type:
+                    ext = '.avi'
+                elif 'mov' in mime_type:
+                    ext = '.mov'
+                
+                temp_file_path = os.path.join(temp_dir, f"{safe_title}_{file_id[:8]}{ext}")
+                
+                # TÉLÉCHARGER LE FICHIER DEPUIS TELEGRAM
+                logger.info(f"⬇️ Téléchargement fichier {file_id[:20]}... vers {temp_file_path}")
+                
+                await client.download_media(
+                    message,
+                    file_name=temp_file_path,
+                    progress=download_progress_callback,
+                    progress_args=(status_msg, "Téléchargement")
+                )
+                
+                # Vérifier que le fichier existe
+                if not os.path.exists(temp_file_path):
+                    raise Exception("Échec du téléchargement - fichier non créé")
+                
+                downloaded_size = os.path.getsize(temp_file_path)
+                logger.info(f"✅ Fichier téléchargé: {format_file_size(downloaded_size)}")
+                
+                # METTRE À JOUR LA DURÉE SI ELLE ÉTAIT MANQUANTE (avec FFmpeg si dispo)
+                if duration == 0:
+                    try:
+                        duration = await extract_duration_from_file(temp_file_path)
+                        if duration > 0:
+                            logger.info(f"✅ Durée extraite: {duration}s")
+                    except Exception as e:
+                        logger.warning(f"⚠️ Impossible d'extraire la durée: {e}")
+                
+                # UPLOAD VERS FILEMOON
+                await status_msg.edit_text(
+                    "☁️ **Upload vers Filemoon...**\n"
+                    f"📤 Envoi de {format_file_size(downloaded_size)}...\n"
+                    "_Ne fermez pas cette fenêtre_"
+                )
+                
+                # Utiliser la fonction d'upload avec fichier local
+                filemoon_link = await upload_file_to_filemoon(temp_file_path, clean_title)
+                
+                if filemoon_link:
+                    logger.info(f"✅ Upload Filemoon réussi: {filemoon_link}")
+                else:
+                    logger.warning("⚠️ Upload Filemoon a retourné None")
+                
             except asyncio.TimeoutError:
                 logger.warning(f"Timeout Filemoon pour {file_id}")
-                await status_msg.edit_text("⚠️ **Upload Filemoon timeout** - La vidéo sera disponible uniquement sur ZeeX")
+                await status_msg.edit_text("⚠️ **Timeout Filemoon** - Sauvegarde uniquement sur ZeeX")
             except Exception as e:
-                logger.error(f"Erreur Filemoon: {e}")
+                logger.error(f"❌ Erreur Filemoon: {e}", exc_info=True)
                 filemoon_link = None
+            finally:
+                # NETTOYER LE FICHIER TEMPORAIRE
+                if temp_file_path and os.path.exists(temp_file_path):
+                    try:
+                        os.remove(temp_file_path)
+                        logger.info(f"🗑️ Fichier temporaire supprimé: {temp_file_path}")
+                    except Exception as e:
+                        logger.warning(f"⚠️ Impossible de supprimer le fichier temp: {e}")
             
             # Étape 3: Sauvegarder dans Supabase
             await status_msg.edit_text("💾 **Sauvegarde en base de données...**")
@@ -232,7 +311,7 @@ def setup_handlers(app: Client, session_manager: SessionManager):
                 raise Exception("Échec de la création en base de données")
                 
         except Exception as e:
-            logger.error(f"Erreur traitement vidéo: {e}", exc_info=True)
+            logger.error(f"❌ Erreur traitement vidéo: {e}", exc_info=True)
             
             # Ajouter à la liste des erreurs de session
             session['errors'] = session.get('errors', [])
@@ -546,3 +625,121 @@ def setup_handlers(app: Client, session_manager: SessionManager):
                 await callback_query.answer("❌ Erreur de suppression", show_alert=True)
         except Exception as e:
             await callback_query.answer(f"❌ {str(e)[:50]}", show_alert=True)
+
+
+# ============================================================================
+# FONCTIONS UTILITAIRES POUR LE BOT
+# ============================================================================
+
+async def download_progress_callback(current, total, status_msg, action):
+    """Callback de progression pour le téléchargement"""
+    try:
+        percent = (current / total) * 100 if total > 0 else 0
+        # Mettre à jour tous les 10% pour éviter le flood
+        if int(percent) % 10 == 0:
+            await status_msg.edit_text(
+                f"☁️ **Upload vers Filemoon...**\n"
+                f"⬇️ {action}: {percent:.1f}%\n"
+                f"({format_file_size(current)} / {format_file_size(total)})"
+            )
+    except Exception:
+        pass  # Ignorer les erreurs de mise à jour
+
+
+async def extract_duration_from_file(file_path: str) -> int:
+    """
+    Extrait la durée d'une vidéo avec ffprobe si disponible
+    """
+    try:
+        import subprocess
+        import json
+        
+        cmd = [
+            'ffprobe', '-v', 'error', '-show_entries', 
+            'format=duration', '-of', 
+            'default=noprint_wrappers=1:nokey=1', file_path
+        ]
+        
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
+        
+        if result.returncode == 0 and result.stdout.strip():
+            duration = float(result.stdout.strip())
+            return int(duration)
+        
+    except FileNotFoundError:
+        logger.warning("⚠️ ffprobe non trouvé - impossible d'extraire la durée")
+    except Exception as e:
+        logger.warning(f"⚠️ Erreur extraction durée: {e}")
+    
+    return 0
+
+
+async def upload_file_to_filemoon(file_path: str, title: str = None) -> str:
+    """
+    Upload un fichier local vers Filemoon
+    """
+    import aiohttp
+    import os
+    from config import FILEMOON_API_KEY
+    
+    if not FILEMOON_API_KEY:
+        logger.warning("⚠️ FILEMOON_API_KEY non configuré")
+        return None
+    
+    filemoon_api_url = "https://filemoon.sx/api/upload"
+    
+    try:
+        file_size = os.path.getsize(file_path)
+        file_name = os.path.basename(file_path)
+        
+        # Préparer le multipart
+        data = aiohttp.FormData()
+        data.add_field('api_key', FILEMOON_API_KEY)
+        if title:
+            data.add_field('title', title[:100])  # Limiter titre
+        
+        # Ajouter le fichier
+        with open(file_path, 'rb') as f:
+            data.add_field('file', f, filename=file_name)
+            
+            timeout = aiohttp.ClientTimeout(total=1800)  # 30 min max
+            
+            async with aiohttp.ClientSession(timeout=timeout) as session:
+                logger.info(f"📤 Upload Filemoon: {file_name} ({format_file_size(file_size)})")
+                
+                async with session.post(filemoon_api_url, data=data) as response:
+                    text = await response.text()
+                    logger.debug(f"Réponse Filemoon: {text[:500]}")
+                    
+                    if response.status != 200:
+                        logger.error(f"❌ HTTP {response.status}: {text[:500]}")
+                        return None
+                    
+                    try:
+                        result = await response.json()
+                    except Exception as e:
+                        logger.error(f"❌ JSON invalide: {e}")
+                        return None
+                    
+                    # Vérification statut
+                    if result.get('status') != 'success':
+                        msg = result.get('msg', 'Unknown error')
+                        logger.error(f"❌ Erreur API Filemoon: {msg}")
+                        return None
+                    
+                    # Extraction URL
+                    result_data = result.get('result', {})
+                    file_code = result_data.get('filecode') or result_data.get('file_code')
+                    
+                    if not file_code:
+                        logger.error(f"❌ Pas de file_code dans: {result_data}")
+                        return None
+                    
+                    player_url = f"https://filemoon.sx/e/{file_code}"
+                    logger.info(f"✅ Upload Filemoon OK: {player_url}")
+                    
+                    return player_url
+                    
+    except Exception as e:
+        logger.error(f"❌ Erreur upload fichier Filemoon: {e}", exc_info=True)
+        return None

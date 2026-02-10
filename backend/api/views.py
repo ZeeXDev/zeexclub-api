@@ -211,6 +211,40 @@ def get_recent_videos(request):
 
 @api_view(['GET'])
 @permission_classes([AllowAny])
+def get_trending_videos(request):
+    """
+    Récupère les vidéos les plus vues (trending par popularité)
+    GET /api/videos/trending/?limit=12
+    """
+    try:
+        limit = int(request.query_params.get('limit', 12))
+        
+        # Récupère les vidéos les plus vues, ordonnées par vues décroissantes
+        # Utilise service_client pour contourner les RLS si nécessaire
+        response = supabase_manager.service_client.table('videos')\
+            .select('*,folders(folder_name)')\
+            .order('views_count', desc=True)\
+            .limit(limit)\
+            .execute()
+        
+        videos = response.data if response.data else []
+        
+        return Response({
+            'success': True,
+            'data': videos,
+            'count': len(videos)
+        })
+        
+    except Exception as e:
+        logger.error(f"❌ Erreur get_trending_videos: {e}")
+        return Response({
+            'success': False,
+            'error': str(e)
+        }, status=500)
+
+
+@api_view(['GET'])
+@permission_classes([AllowAny])
 def get_video_detail(request, video_id):
     """Récupère les détails d'une vidéo spécifique"""
     try:
