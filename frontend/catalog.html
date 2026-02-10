@@ -12,91 +12,361 @@
     <link rel="stylesheet" href="css/bottom-nav.css">
     <link rel="stylesheet" href="css/responsive.css">
     <style>
-        .scroll-progress {
-            position: fixed;
-            top: 0;
-            left: 0;
-            height: 3px;
-            background: linear-gradient(90deg, #E31E24, #00A7E1);
-            z-index: 10000;
-            width: 0%;
-            transition: width 0.1s linear;
+        /* Styles complémentaires pour le catalogue */
+        .catalog-page {
+            padding-top: 80px;
+            min-height: 100vh;
+            background: var(--background-black);
         }
         
-        .filter-tag {
-            animation: tagPop 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+        .catalog-header {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 1rem;
         }
         
-        @keyframes tagPop {
-            0% { transform: scale(0) rotate(-10deg); opacity: 0; }
-            100% { transform: scale(1) rotate(0); opacity: 1; }
+        .catalog-header h1 {
+            font-family: 'Bebas Neue', sans-serif;
+            font-size: 3rem;
+            color: white;
         }
         
-        .catalog-grid .movie-card {
-            opacity: 0;
-            animation: cardFadeIn 0.5s ease forwards;
+        .search-bar {
+            display: flex;
+            gap: 0.5rem;
+            flex: 1;
+            max-width: 500px;
         }
         
-        @keyframes cardFadeIn {
-            to { opacity: 1; transform: translateY(0); }
+        .search-bar input {
+            flex: 1;
+            padding: 0.75rem 1rem;
+            background: rgba(255,255,255,0.1);
+            border: 1px solid rgba(255,255,255,0.2);
+            border-radius: 8px;
+            color: white;
+            font-size: 1rem;
         }
         
-        .skeleton-card-catalog::after {
-            content: '';
+        .search-bar input::placeholder {
+            color: var(--light-gray);
+        }
+        
+        .search-bar button {
+            padding: 0.75rem 1.5rem;
+            background: var(--primary-red);
+            border: none;
+            border-radius: 8px;
+            color: white;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .search-bar button:hover {
+            background: #ff4444;
+        }
+        
+        /* Filtres */
+        .filters-bar {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 0 2rem 2rem;
+            display: flex;
+            gap: 1rem;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+        
+        .filters-bar select {
+            padding: 0.625rem 1rem;
+            background: rgba(255,255,255,0.1);
+            border: 1px solid rgba(255,255,255,0.2);
+            border-radius: 8px;
+            color: white;
+            font-size: 0.9375rem;
+            cursor: pointer;
+            min-width: 150px;
+        }
+        
+        .filters-bar select option {
+            background: #1a1a1a;
+        }
+        
+        .btn-text {
+            padding: 0.625rem 1rem;
+            background: transparent;
+            border: 1px solid rgba(255,255,255,0.3);
+            border-radius: 8px;
+            color: var(--light-gray);
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .btn-text:hover {
+            border-color: var(--primary-red);
+            color: var(--primary-red);
+        }
+        
+        /* Résultats */
+        .results-info {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 0 2rem 1.5rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        #results-count {
+            color: var(--light-gray);
+        }
+        
+        #results-count strong {
+            color: white;
+            font-size: 1.25rem;
+        }
+        
+        /* Grille de séries */
+        .catalog-grid {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 0 2rem 4rem;
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+            gap: 1.5rem;
+        }
+        
+        /* Carte série */
+        .series-card {
+            background: rgba(255,255,255,0.05);
+            border-radius: 12px;
+            overflow: hidden;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+        
+        .series-card:hover {
+            transform: translateY(-8px);
+            border-color: var(--primary-red);
+            box-shadow: 0 20px 40px rgba(0,0,0,0.4);
+        }
+        
+        .card-image {
+            position: relative;
+            aspect-ratio: 2/3;
+            overflow: hidden;
+        }
+        
+        .card-image img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            transition: transform 0.3s ease;
+        }
+        
+        .series-card:hover .card-image img {
+            transform: scale(1.05);
+        }
+        
+        .card-overlay {
             position: absolute;
             inset: 0;
-            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.05), transparent);
-            transform: translateX(-100%);
-            animation: shimmer 1.5s infinite;
-        }
-        
-        @keyframes shimmer {
-            0% { transform: translateX(-100%); }
-            100% { transform: translateX(100%); }
-        }
-        
-        .count-update {
-            animation: countPulse 0.3s ease;
-        }
-        
-        @keyframes countPulse {
-            0%, 100% { transform: scale(1); }
-            50% { transform: scale(1.2); color: #E31E24; }
-        }
-        
-        .highlight-match {
-            background: linear-gradient(120deg, rgba(227,30,36,0.3) 0%, rgba(227,30,36,0.3) 100%);
-            background-repeat: no-repeat;
-            background-size: 100% 40%;
-            background-position: 0 88%;
-            color: #FF5252;
-            font-weight: 600;
-        }
-        
-        .url-encode-badge {
-            position: absolute;
-            bottom: 10px;
-            right: 10px;
-            background: rgba(0,0,0,0.8);
-            color: #00A7E1;
-            padding: 4px 8px;
-            border-radius: 4px;
-            font-size: 0.625rem;
-            font-family: monospace;
+            background: rgba(0,0,0,0.7);
+            display: flex;
+            align-items: center;
+            justify-content: center;
             opacity: 0;
             transition: opacity 0.3s ease;
-            z-index: 10;
         }
         
-        .movie-card:hover .url-encode-badge {
+        .series-card:hover .card-overlay {
             opacity: 1;
+        }
+        
+        .info-btn {
+            width: 50px;
+            height: 50px;
+            background: var(--primary-red);
+            border: none;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: transform 0.3s ease;
+        }
+        
+        .info-btn:hover {
+            transform: scale(1.1);
+        }
+        
+        .info-btn svg {
+            width: 24px;
+            height: 24px;
+            stroke: white;
+        }
+        
+        .series-badge, .movie-badge {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            padding: 0.375rem 0.75rem;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            font-weight: 700;
+            text-transform: uppercase;
+        }
+        
+        .series-badge {
+            background: var(--primary-blue);
+            color: white;
+        }
+        
+        .movie-badge {
+            background: var(--primary-red);
+            color: white;
+        }
+        
+        .card-content {
+            padding: 1rem;
+        }
+        
+        .card-title {
+            font-size: 1rem;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+            color: white;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        
+        .card-meta {
+            display: flex;
+            gap: 0.75rem;
+            color: var(--light-gray);
+            font-size: 0.875rem;
+            margin-bottom: 0.5rem;
+        }
+        
+        .card-rating {
+            color: #FFD700;
+        }
+        
+        .card-genres {
+            font-size: 0.8125rem;
+            color: var(--lighter-gray);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        
+        /* Empty state */
+        .empty-catalog {
+            grid-column: 1 / -1;
+            text-align: center;
+            padding: 4rem 2rem;
+            color: var(--light-gray);
+        }
+        
+        .empty-catalog svg {
+            width: 64px;
+            height: 64px;
+            margin-bottom: 1rem;
+            opacity: 0.5;
+        }
+        
+        .empty-catalog h3 {
+            font-size: 1.5rem;
+            margin-bottom: 0.5rem;
+            color: white;
+        }
+        
+        /* Pagination */
+        .pagination {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 0 2rem 4rem;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 1rem;
+        }
+        
+        .page-btn {
+            width: 44px;
+            height: 44px;
+            background: rgba(255,255,255,0.1);
+            border: 1px solid rgba(255,255,255,0.2);
+            border-radius: 8px;
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .page-btn:hover:not(:disabled) {
+            background: var(--primary-red);
+            border-color: var(--primary-red);
+        }
+        
+        .page-btn:disabled {
+            opacity: 0.3;
+            cursor: not-allowed;
+        }
+        
+        .page-btn svg {
+            width: 20px;
+            height: 20px;
+        }
+        
+        #pageInfo {
+            color: var(--light-gray);
+            font-size: 0.9375rem;
+        }
+        
+        /* Responsive */
+        @media (max-width: 768px) {
+            .catalog-header {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            
+            .catalog-header h1 {
+                font-size: 2rem;
+            }
+            
+            .search-bar {
+                max-width: none;
+            }
+            
+            .filters-bar {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            
+            .filters-bar select {
+                width: 100%;
+            }
+            
+            .catalog-grid {
+                grid-template-columns: repeat(2, 1fr);
+                gap: 1rem;
+                padding: 0 1rem 2rem;
+            }
         }
     </style>
 </head>
 <body class="catalog-page">
-    <div class="scroll-progress" id="scrollProgress"></div>
-    <a href="#main-content" class="skip-link">Aller au contenu principal</a>
-    
+    <!-- Header -->
     <header class="main-header" id="main-header">
         <div class="header-backdrop"></div>
         <div class="header-content">
@@ -115,169 +385,63 @@
                         <a href="index.html" class="nav-link">
                             <span class="nav-text">Accueil</span>
                             <span class="nav-hover">Accueil</span>
-                            <svg class="nav-underline" viewBox="0 0 100 6" preserveAspectRatio="none">
-                                <path class="underline-path" d="M0,3 Q50,0 100,3" stroke="#E31E24" stroke-width="3" fill="none" stroke-dasharray="100" stroke-dashoffset="100"/>
-                            </svg>
                         </a>
                     </li>
                     <li class="nav-item">
                         <a href="catalog.html" class="nav-link active">
                             <span class="nav-text">Catalogue</span>
                             <span class="nav-hover">Catalogue</span>
-                            <svg class="nav-underline" viewBox="0 0 100 6" preserveAspectRatio="none">
-                                <path class="underline-path" d="M0,3 Q50,0 100,3" stroke="#E31E24" stroke-width="3" fill="none" stroke-dasharray="100" stroke-dashoffset="0"/>
-                            </svg>
                         </a>
                     </li>
                     <li class="nav-item">
                         <a href="trending.html" class="nav-link">
                             <span class="nav-text">Tendances</span>
                             <span class="nav-hover">Tendances</span>
-                            <span class="trending-badge">HOT</span>
-                            <svg class="nav-underline" viewBox="0 0 100 6" preserveAspectRatio="none">
-                                <path class="underline-path" d="M0,3 Q50,0 100,3" stroke="#E31E24" stroke-width="3" fill="none" stroke-dasharray="100" stroke-dashoffset="100"/>
-                            </svg>
                         </a>
                     </li>
                     <li class="nav-item">
                         <a href="mylist.html" class="nav-link">
                             <span class="nav-text">Ma Liste</span>
                             <span class="nav-hover">Ma Liste</span>
-                            <span class="list-count" id="navListCount" style="display:none">0</span>
-                            <svg class="nav-underline" viewBox="0 0 100 6" preserveAspectRatio="none">
-                                <path class="underline-path" d="M0,3 Q50,0 100,3" stroke="#E31E24" stroke-width="3" fill="none" stroke-dasharray="100" stroke-dashoffset="100"/>
-                            </svg>
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a href="search.html" class="nav-link">
-                            <span class="nav-text">Recherche</span>
-                            <span class="nav-hover">Recherche</span>
-                            <svg class="nav-underline" viewBox="0 0 100 6" preserveAspectRatio="none">
-                                <path class="underline-path" d="M0,3 Q50,0 100,3" stroke="#E31E24" stroke-width="3" fill="none" stroke-dasharray="100" stroke-dashoffset="100"/>
-                            </svg>
                         </a>
                     </li>
                 </ul>
             </nav>
             
             <div class="header-actions">
-                <div class="search-wrapper" id="searchWrapper">
-                    <button class="search-toggle" id="searchToggle" aria-label="Rechercher">
-                        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <circle cx="11" cy="11" r="8"></circle>
-                            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-                        </svg>
-                    </button>
-                    <div class="search-panel">
-                        <form class="search-form" action="search.html" method="GET">
-                            <input type="text" name="q" class="search-input" placeholder="Rechercher..." autocomplete="off">
-                            <button type="submit" class="search-submit">
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    <circle cx="11" cy="11" r="8"></circle>
-                                    <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-                                </svg>
-                            </button>
-                        </form>
-                    </div>
-                </div>
-                
-                <div class="user-menu-wrapper" id="userMenuWrapper">
-                    <button class="user-menu-toggle" id="userMenuToggle">
-                        <img src="img/default-avatar.png" alt="Avatar" class="user-avatar-small" id="headerAvatar">
-                        <span class="user-name-short" id="headerUserName">Invité</span>
-                        <svg class="dropdown-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <polyline points="6 9 12 15 18 9"></polyline>
-                        </svg>
-                    </button>
-                    <div class="user-dropdown">
-                        <div class="dropdown-header">
-                            <img src="img/default-avatar.png" alt="Avatar" class="dropdown-avatar" id="dropdownAvatar">
-                            <div class="dropdown-user-info">
-                                <strong id="dropdownUserName">Invité</strong>
-                                <span id="dropdownUserEmail">Connectez-vous</span>
-                            </div>
-                        </div>
-                        <div class="dropdown-divider"></div>
-                        <a href="profile.html" class="dropdown-item">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
-                                <circle cx="12" cy="7" r="4"></circle>
-                            </svg>
-                            Profil
-                        </a>
-                        <a href="mylist.html" class="dropdown-item">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
-                            </svg>
-                            Ma Liste
-                        </a>
-                        <div class="dropdown-divider"></div>
-                        <button class="dropdown-item logout-item" id="logoutBtn">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
-                                <polyline points="16 17 21 12 16 7"></polyline>
-                                <line x1="21" y1="12" x2="9" y2="12"></line>
-                            </svg>
-                            Déconnexion
-                        </button>
-                    </div>
-                </div>
-                
-                <a href="login.html" class="btn-login-header" id="loginBtn">Connexion</a>
+                <a href="search.html" class="btn-search" style="display: flex; align-items: center; gap: 0.5rem; color: white; text-decoration: none; padding: 0.5rem 1rem; background: rgba(255,255,255,0.1); border-radius: 8px;">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="11" cy="11" r="8"></circle>
+                        <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                    </svg>
+                    Recherche
+                </a>
             </div>
-            
-            <button class="mobile-menu-toggle" id="mobileMenuToggle">
-                <span class="hamburger-line"></span>
-                <span class="hamburger-line"></span>
-                <span class="hamburger-line"></span>
-            </button>
         </div>
     </header>
-    
-    <div class="mobile-nav" id="mobileNav">
-        <div class="mobile-nav-backdrop"></div>
-        <div class="mobile-nav-panel">
-            <div class="mobile-nav-header">
-                <span class="mobile-nav-title">Menu</span>
-                <button class="mobile-nav-close" id="mobileNavClose">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <line x1="18" y1="6" x2="6" y2="18"></line>
-                        <line x1="6" y1="6" x2="18" y2="18"></line>
-                    </svg>
-                </button>
-            </div>
-            <ul class="mobile-nav-list">
-                <li><a href="index.html" class="mobile-nav-link">Accueil</a></li>
-                <li><a href="catalog.html" class="mobile-nav-link active">Catalogue</a></li>
-                <li><a href="trending.html" class="mobile-nav-link">Tendances</a></li>
-                <li><a href="mylist.html" class="mobile-nav-link">Ma Liste</a></li>
-                <li><a href="search.html" class="mobile-nav-link">Recherche</a></li>
-                <li><a href="profile.html" class="mobile-nav-link">Profil</a></li>
-            </ul>
-        </div>
-    </div>
-    
-    <main class="catalog-main" id="main-content">
+
+    <!-- Main Content -->
+    <main>
+        <!-- Header Catalogue -->
         <div class="catalog-header">
             <h1>Catalogue</h1>
             <div class="search-bar">
-                <input type="text" id="catalogSearch" placeholder="Rechercher dans le catalogue..." autocomplete="off">
+                <input type="text" id="catalogSearch" placeholder="Rechercher un film, une série..." autocomplete="off">
                 <button id="catalogSearchBtn" aria-label="Rechercher">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <circle cx="11" cy="11" r="8"></circle>
                         <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
                     </svg>
                 </button>
-                <div class="search-suggestions" id="searchSuggestions"></div>
             </div>
         </div>
         
+        <!-- Filtres -->
         <div class="filters-bar">
             <select id="filterType">
                 <option value="">Tous les types</option>
                 <option value="movie">Films</option>
-                <option value="series">Séries</option>
+                <option value="tv">Séries</option>
             </select>
             
             <select id="filterGenre">
@@ -296,7 +460,7 @@
                 <option value="music">Musique</option>
                 <option value="mystery">Mystère</option>
                 <option value="romance">Romance</option>
-                <option value="scifi">Science-Fiction</option>
+                <option value="science-fiction">Science-Fiction</option>
                 <option value="thriller">Thriller</option>
                 <option value="war">Guerre</option>
                 <option value="western">Western</option>
@@ -312,126 +476,64 @@
                 <option value="2021">2021</option>
                 <option value="2020">2020</option>
                 <option value="2019">2019</option>
-                <option value="2010s">2010-2018</option>
-                <option value="2000s">2000-2009</option>
-                <option value="1990s">1990-1999</option>
-                <option value="1980s">1980-1989</option>
-                <option value="classic">Avant 1980</option>
-            </select>
-            
-            <select id="filterRating">
-                <option value="">Toutes les notes</option>
-                <option value="9">9+ Excellente</option>
-                <option value="8">8+ Très bien</option>
-                <option value="7">7+ Bien</option>
-                <option value="6">6+ Moyen</option>
             </select>
             
             <select id="filterSort">
-                <option value="popularity">Popularité</option>
                 <option value="newest">Plus récent</option>
                 <option value="oldest">Plus ancien</option>
                 <option value="rating">Meilleure note</option>
-                <option value="title">Titre A-Z</option>
+                <option value="popularity">Popularité</option>
             </select>
             
             <button class="btn-text" id="resetFilters">Réinitialiser</button>
         </div>
         
-        <div class="active-filters" id="activeFilters">
-            <span class="active-filters-label">Filtres actifs:</span>
-        </div>
-        
+        <!-- Info résultats -->
         <div class="results-info">
             <p id="results-count"><strong id="results-total">0</strong> résultats trouvés</p>
-            <div class="view-toggle">
-                <button class="view-btn active" data-view="grid" aria-label="Vue grille">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <rect x="3" y="3" width="7" height="7"></rect>
-                        <rect x="14" y="3" width="7" height="7"></rect>
-                        <rect x="14" y="14" width="7" height="7"></rect>
-                        <rect x="3" y="14" width="7" height="7"></rect>
-                    </svg>
-                </button>
-                <button class="view-btn" data-view="list" aria-label="Vue liste">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <line x1="8" y1="6" x2="21" y2="6"></line>
-                        <line x1="8" y1="12" x2="21" y2="12"></line>
-                        <line x1="8" y1="18" x2="21" y2="18"></line>
-                        <line x1="3" y1="6" x2="3.01" y2="6"></line>
-                        <line x1="3" y1="12" x2="3.01" y2="12"></line>
-                        <line x1="3" y1="18" x2="3.01" y2="18"></line>
-                    </svg>
-                </button>
-            </div>
         </div>
         
-        <div class="catalog-grid" id="catalogGrid">
-            <div class="skeleton-card-catalog">
-                <div class="skeleton-image-catalog"></div>
-                <div class="skeleton-content-catalog">
-                    <div class="skeleton-title-catalog"></div>
-                    <div class="skeleton-meta-catalog"></div>
+        <!-- Grille de résultats -->
+        <div class="catalog-grid" id="catalog-grid">
+            <!-- Skeleton loading -->
+            <div class="series-card" style="opacity: 0.5;">
+                <div class="card-image" style="background: rgba(255,255,255,0.1);"></div>
+                <div class="card-content">
+                    <div style="height: 20px; background: rgba(255,255,255,0.1); border-radius: 4px; margin-bottom: 8px;"></div>
+                    <div style="height: 16px; background: rgba(255,255,255,0.05); border-radius: 4px; width: 60%;"></div>
                 </div>
             </div>
-            <div class="skeleton-card-catalog">
-                <div class="skeleton-image-catalog"></div>
-                <div class="skeleton-content-catalog">
-                    <div class="skeleton-title-catalog"></div>
-                    <div class="skeleton-meta-catalog"></div>
+            <div class="series-card" style="opacity: 0.5;">
+                <div class="card-image" style="background: rgba(255,255,255,0.1);"></div>
+                <div class="card-content">
+                    <div style="height: 20px; background: rgba(255,255,255,0.1); border-radius: 4px; margin-bottom: 8px;"></div>
+                    <div style="height: 16px; background: rgba(255,255,255,0.05); border-radius: 4px; width: 60%;"></div>
                 </div>
             </div>
-            <div class="skeleton-card-catalog">
-                <div class="skeleton-image-catalog"></div>
-                <div class="skeleton-content-catalog">
-                    <div class="skeleton-title-catalog"></div>
-                    <div class="skeleton-meta-catalog"></div>
+            <div class="series-card" style="opacity: 0.5;">
+                <div class="card-image" style="background: rgba(255,255,255,0.1);"></div>
+                <div class="card-content">
+                    <div style="height: 20px; background: rgba(255,255,255,0.1); border-radius: 4px; margin-bottom: 8px;"></div>
+                    <div style="height: 16px; background: rgba(255,255,255,0.05); border-radius: 4px; width: 60%;"></div>
                 </div>
             </div>
-            <div class="skeleton-card-catalog">
-                <div class="skeleton-image-catalog"></div>
-                <div class="skeleton-content-catalog">
-                    <div class="skeleton-title-catalog"></div>
-                    <div class="skeleton-meta-catalog"></div>
-                </div>
-            </div>
-            <div class="skeleton-card-catalog">
-                <div class="skeleton-image-catalog"></div>
-                <div class="skeleton-content-catalog">
-                    <div class="skeleton-title-catalog"></div>
-                    <div class="skeleton-meta-catalog"></div>
-                </div>
-            </div>
-            <div class="skeleton-card-catalog">
-                <div class="skeleton-image-catalog"></div>
-                <div class="skeleton-content-catalog">
-                    <div class="skeleton-title-catalog"></div>
-                    <div class="skeleton-meta-catalog"></div>
-                </div>
-            </div>
-            <div class="skeleton-card-catalog">
-                <div class="skeleton-image-catalog"></div>
-                <div class="skeleton-content-catalog">
-                    <div class="skeleton-title-catalog"></div>
-                    <div class="skeleton-meta-catalog"></div>
-                </div>
-            </div>
-            <div class="skeleton-card-catalog">
-                <div class="skeleton-image-catalog"></div>
-                <div class="skeleton-content-catalog">
-                    <div class="skeleton-title-catalog"></div>
-                    <div class="skeleton-meta-catalog"></div>
+            <div class="series-card" style="opacity: 0.5;">
+                <div class="card-image" style="background: rgba(255,255,255,0.1);"></div>
+                <div class="card-content">
+                    <div style="height: 20px; background: rgba(255,255,255,0.1); border-radius: 4px; margin-bottom: 8px;"></div>
+                    <div style="height: 16px; background: rgba(255,255,255,0.05); border-radius: 4px; width: 60%;"></div>
                 </div>
             </div>
         </div>
         
+        <!-- Pagination -->
         <div class="pagination" id="pagination">
             <button class="page-btn" id="prevPage" disabled>
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <polyline points="15 18 9 12 15 6"></polyline>
                 </svg>
             </button>
-            <span class="page-ellipsis" id="pageInfo">Page 1 sur 10</span>
+            <span id="pageInfo">Page 1</span>
             <button class="page-btn" id="nextPage">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <polyline points="9 18 15 12 9 6"></polyline>
@@ -439,7 +541,8 @@
             </button>
         </div>
     </main>
-    
+
+    <!-- Bottom Navigation Mobile -->
     <nav class="bottom-nav">
         <div class="bottom-nav-container">
             <a href="index.html" class="bottom-nav-item">
@@ -469,7 +572,6 @@
                     <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
                 </svg>
                 <span class="bottom-nav-label">Ma Liste</span>
-                <span class="nav-badge" id="bottomNavBadge" style="display:none">0</span>
             </a>
             <a href="profile.html" class="bottom-nav-item">
                 <svg class="bottom-nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -480,54 +582,15 @@
             </a>
         </div>
     </nav>
-    
+
+    <!-- Toast Container -->
     <div class="toast-container" id="toastContainer"></div>
-    
+
+    <!-- Scripts -->
     <script type="module" src="js/config.js"></script>
     <script type="module" src="js/supabase-client.js"></script>
-    <script type="module" src="js/auth.js"></script>
     <script type="module" src="js/api.js"></script>
     <script type="module" src="js/utils.js"></script>
     <script type="module" src="js/catalog.js"></script>
-    <script type="module" src="js/bottom-nav.js"></script>
-    
-    <script>
-        window.addEventListener('scroll', () => {
-            const winScroll = document.body.scrollTop || document.documentElement.scrollTop;
-            const height = document.documentElement.scrollHeight - document.documentElement.clientHeight;
-            const scrolled = (winScroll / height) * 100;
-            document.getElementById('scrollProgress').style.width = scrolled + '%';
-        });
-        
-        const mobileMenuToggle = document.getElementById('mobileMenuToggle');
-        const mobileNav = document.getElementById('mobileNav');
-        const mobileNavClose = document.getElementById('mobileNavClose');
-        
-        mobileMenuToggle?.addEventListener('click', () => {
-            mobileMenuToggle.classList.toggle('active');
-            mobileNav.classList.toggle('active');
-        });
-        
-        mobileNavClose?.addEventListener('click', () => {
-            mobileMenuToggle.classList.remove('active');
-            mobileNav.classList.remove('active');
-        });
-        
-        const searchToggle = document.getElementById('searchToggle');
-        const searchWrapper = document.getElementById('searchWrapper');
-        
-        searchToggle?.addEventListener('click', () => {
-            searchWrapper.classList.toggle('active');
-            if (searchWrapper.classList.contains('active')) {
-                searchWrapper.querySelector('input')?.focus();
-            }
-        });
-        
-        document.addEventListener('click', (e) => {
-            if (!searchWrapper?.contains(e.target)) {
-                searchWrapper?.classList.remove('active');
-            }
-        });
-    </script>
 </body>
 </html>

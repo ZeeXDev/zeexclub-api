@@ -1,0 +1,493 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Détails - ZeeXClub</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Bebas+Neue&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/main.css">
+    <link rel="stylesheet" href="css/bottom-nav.css">
+    <link rel="stylesheet" href="css/responsive.css">
+    <style>
+        /* Styles spécifiques page détails */
+        .details-page {
+            background: var(--background-black);
+            min-height: 100vh;
+        }
+        
+        /* Hero Section */
+        .series-hero {
+            position: relative;
+            height: 70vh;
+            min-height: 500px;
+            background-size: cover;
+            background-position: center top;
+            display: flex;
+            align-items: flex-end;
+        }
+        
+        .hero-overlay {
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(to top, 
+                rgba(10,10,10,1) 0%, 
+                rgba(10,10,10,0.8) 30%,
+                rgba(10,10,10,0.4) 60%,
+                rgba(10,10,10,0.2) 100%
+            );
+        }
+        
+        .hero-content {
+            position: relative;
+            z-index: 2;
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 0 2rem 3rem;
+            width: 100%;
+        }
+        
+        .series-title {
+            font-family: 'Bebas Neue', sans-serif;
+            font-size: 4rem;
+            font-weight: bold;
+            margin-bottom: 1rem;
+            background: linear-gradient(90deg, #fff 0%, #ccc 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+        }
+        
+        .series-meta {
+            display: flex;
+            gap: 1.5rem;
+            align-items: center;
+            margin-bottom: 1.5rem;
+            flex-wrap: wrap;
+        }
+        
+        .series-year {
+            color: var(--light-gray);
+            font-size: 1.125rem;
+        }
+        
+        .series-rating {
+            color: #FFD700;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        .series-genres {
+            color: var(--light-gray);
+            font-size: 0.9375rem;
+        }
+        
+        /* Info Section */
+        .series-info-section {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+        
+        .series-description {
+            font-size: 1.125rem;
+            line-height: 1.8;
+            color: var(--light-gray);
+            max-width: 800px;
+            margin-bottom: 2rem;
+        }
+        
+        .series-meta-info {
+            display: flex;
+            gap: 2rem;
+            color: var(--lighter-gray);
+            font-size: 0.9375rem;
+            margin-bottom: 2rem;
+        }
+        
+        /* Action Buttons */
+        .action-buttons {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 3rem;
+            flex-wrap: wrap;
+        }
+        
+        .btn-primary {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 1rem 2rem;
+            background: var(--primary-red);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 1.125rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .btn-primary:hover {
+            background: #ff4444;
+            transform: scale(1.05);
+        }
+        
+        .btn-secondary {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 1rem 2rem;
+            background: rgba(255,255,255,0.1);
+            color: white;
+            border: 1px solid rgba(255,255,255,0.2);
+            border-radius: 8px;
+            font-size: 1.125rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .btn-secondary:hover {
+            background: rgba(255,255,255,0.2);
+        }
+        
+        /* Seasons Section */
+        .seasons-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 0 2rem 4rem;
+        }
+        
+        .season-selector {
+            margin-bottom: 2rem;
+        }
+        
+        .season-select {
+            background: rgba(255,255,255,0.1);
+            border: 1px solid rgba(255,255,255,0.2);
+            color: white;
+            padding: 0.75rem 1.5rem;
+            border-radius: 8px;
+            font-size: 1rem;
+            cursor: pointer;
+            min-width: 250px;
+        }
+        
+        .season-select option {
+            background: #1a1a1a;
+        }
+        
+        .episodes-list {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+        
+        .episode-card {
+            display: flex;
+            gap: 1.5rem;
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 12px;
+            padding: 1.5rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .episode-card:hover {
+            background: rgba(255,255,255,0.08);
+            transform: translateX(10px);
+            border-color: var(--primary-red);
+        }
+        
+        .episode-number {
+            width: 50px;
+            height: 50px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.25rem;
+            font-weight: 700;
+            flex-shrink: 0;
+        }
+        
+        .episode-image {
+            width: 160px;
+            height: 90px;
+            border-radius: 8px;
+            overflow: hidden;
+            flex-shrink: 0;
+            position: relative;
+        }
+        
+        .episode-image img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        
+        .episode-play-overlay {
+            position: absolute;
+            inset: 0;
+            background: rgba(0,0,0,0.6);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+        
+        .episode-card:hover .episode-play-overlay {
+            opacity: 1;
+        }
+        
+        .episode-play-overlay svg {
+            width: 40px;
+            height: 40px;
+            fill: white;
+        }
+        
+        .episode-info {
+            flex: 1;
+        }
+        
+        .episode-title {
+            font-size: 1.125rem;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+        }
+        
+        .episode-desc {
+            color: var(--light-gray);
+            font-size: 0.9375rem;
+            line-height: 1.6;
+            margin-bottom: 0.75rem;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+        
+        .episode-meta {
+            display: flex;
+            gap: 1.5rem;
+            color: var(--lighter-gray);
+            font-size: 0.875rem;
+        }
+        
+        /* Loading State */
+        .loading-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 60vh;
+            gap: 1rem;
+        }
+        
+        .loading-spinner {
+            width: 60px;
+            height: 60px;
+            border: 4px solid rgba(255,255,255,0.1);
+            border-top-color: var(--primary-red);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
+        /* Error State */
+        .error-container {
+            text-align: center;
+            padding: 4rem 2rem;
+        }
+        
+        .error-container h2 {
+            font-size: 2rem;
+            margin-bottom: 1rem;
+            color: var(--primary-red);
+        }
+        
+        /* Responsive */
+        @media (max-width: 768px) {
+            .series-hero {
+                height: 50vh;
+                min-height: 400px;
+            }
+            
+            .series-title {
+                font-size: 2.5rem;
+            }
+            
+            .hero-content {
+                padding: 0 1rem 2rem;
+            }
+            
+            .series-info-section,
+            .seasons-container {
+                padding: 1.5rem;
+            }
+            
+            .episode-card {
+                flex-direction: column;
+            }
+            
+            .episode-image {
+                width: 100%;
+                height: 180px;
+            }
+            
+            .action-buttons {
+                flex-direction: column;
+            }
+            
+            .btn-primary,
+            .btn-secondary {
+                width: 100%;
+                justify-content: center;
+            }
+        }
+    </style>
+</head>
+<body class="details-page">
+    <!-- Header -->
+    <header class="main-header" id="main-header">
+        <div class="header-backdrop"></div>
+        <div class="header-content">
+            <a href="index.html" class="logo-link">
+                <div class="logo-container">
+                    <svg class="logo-svg" viewBox="0 0 200 50" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <text x="0" y="40" fill="#E31E24" font-family="Bebas Neue" font-size="48" font-weight="bold">ZEEX</text>
+                        <text x="95" y="40" fill="#00A7E1" font-family="Bebas Neue" font-size="48" font-weight="bold">CLUB</text>
+                    </svg>
+                </div>
+            </a>
+            
+            <nav class="primary-nav">
+                <ul class="nav-list">
+                    <li class="nav-item">
+                        <a href="index.html" class="nav-link">
+                            <span class="nav-text">Accueil</span>
+                            <span class="nav-hover">Accueil</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="catalog.html" class="nav-link">
+                            <span class="nav-text">Catalogue</span>
+                            <span class="nav-hover">Catalogue</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="trending.html" class="nav-link">
+                            <span class="nav-text">Tendances</span>
+                            <span class="nav-hover">Tendances</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="mylist.html" class="nav-link">
+                            <span class="nav-text">Ma Liste</span>
+                            <span class="nav-hover">Ma Liste</span>
+                        </a>
+                    </li>
+                </ul>
+            </nav>
+            
+            <div class="header-actions">
+                <a href="index.html" class="btn-back" style="display: flex; align-items: center; gap: 0.5rem; color: white; text-decoration: none; padding: 0.5rem 1rem; background: rgba(255,255,255,0.1); border-radius: 8px;">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="19" y1="12" x2="5" y2="12"></line>
+                        <polyline points="12 19 5 12 12 5"></polyline>
+                    </svg>
+                    Retour
+                </a>
+            </div>
+        </div>
+    </header>
+
+    <!-- Loading State -->
+    <div class="loading-container" id="loading-container">
+        <div class="loading-spinner"></div>
+        <p>Chargement...</p>
+    </div>
+
+    <!-- Main Content (caché au début) -->
+    <main id="main-content" style="display: none;">
+        <!-- Hero Section -->
+        <section class="series-hero" id="series-hero">
+            <div class="hero-overlay"></div>
+            <div class="hero-content">
+                <h1 class="series-title" id="series-title">Titre</h1>
+                <div class="series-meta">
+                    <span class="series-year" id="series-year"></span>
+                    <span class="series-rating" id="series-rating"></span>
+                    <span class="series-genres" id="series-genres"></span>
+                </div>
+            </div>
+        </section>
+
+        <!-- Info Section -->
+        <section class="series-info-section">
+            <p class="series-description" id="series-description"></p>
+            <div class="series-meta-info" id="series-meta-info"></div>
+            
+            <div class="action-buttons">
+                <button class="btn-primary" id="btn-play-series">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+                        <polygon points="5 3 19 12 5 21 5 3"></polygon>
+                    </svg>
+                    Regarder
+                </button>
+                <button class="btn-secondary" id="btn-add-list">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
+                    </svg>
+                    Ajouter à ma liste
+                </button>
+                <button class="btn-secondary" id="btn-share-series">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="18" cy="5" r="3"></circle>
+                        <circle cx="6" cy="12" r="3"></circle>
+                        <circle cx="18" cy="19" r="3"></circle>
+                        <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line>
+                        <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line>
+                    </svg>
+                    Partager
+                </button>
+            </div>
+        </section>
+
+        <!-- Seasons/Episodes Section -->
+        <section class="seasons-container" id="seasons-container">
+            <div class="season-selector" id="season-selector"></div>
+            <div class="episodes-list" id="episodes-list"></div>
+        </section>
+    </main>
+
+    <!-- Error Container -->
+    <div class="error-container" id="error-container" style="display: none;">
+        <h2>❌ Erreur</h2>
+        <p id="error-message">Contenu introuvable</p>
+        <a href="index.html" class="btn-primary" style="display: inline-block; margin-top: 1rem; text-decoration: none;">
+            Retour à l'accueil
+        </a>
+    </div>
+
+    <!-- Toast Container -->
+    <div class="toast-container" id="toastContainer"></div>
+
+    <!-- Scripts -->
+    <script type="module" src="js/config.js"></script>
+    <script type="module" src="js/supabase-client.js"></script>
+    <script type="module" src="js/api.js"></script>
+    <script type="module" src="js/utils.js"></script>
+    <script type="module" src="js/details.js"></script>
+</body>
+</html>
