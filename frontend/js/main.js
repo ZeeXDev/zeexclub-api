@@ -17,7 +17,7 @@ import {
     formatDuration
 } from './utils.js';
 
-// État global de l'application
+// État global de l'application.
 const AppState = {
     currentUser: null,
     isLoading: false,
