@@ -29,6 +29,23 @@ from database.supabase_client import supabase_manager
 
 logger = logging.getLogger(__name__)
 
+
+# =============================================================================
+# FONCTION UTILITAIRE POUR CONVERSION SÉCURISÉE
+# =============================================================================
+
+def safe_int(value, default=None):
+    """
+    Convertit une valeur en int en gérant les cas 'null', '', None, 'undefined'
+    """
+    if value in (None, '', 'null', 'undefined'):
+        return default
+    try:
+        return int(value)
+    except (ValueError, TypeError):
+        return default
+
+
 # Client Pyrogram global pour le streaming (singleton)
 _stream_client = None
 _stream_lock = threading.Lock()
@@ -83,6 +100,7 @@ def get_stream_client():
     if _stream_client is None and not _client_ready.is_set():
         init_stream_client()
     return _stream_client
+
 
 # =============================================================================
 # ENDPOINTS DE STREAMING
@@ -201,7 +219,7 @@ class StreamVideoView(APIView):
 def get_recent_videos(request):
     """Récupère les vidéos récentes pour la page d'accueil"""
     try:
-        limit = int(request.query_params.get('limit', 12))
+        limit = safe_int(request.query_params.get('limit'), 12)
         videos = supabase_manager.get_recent_videos(limit=limit)
         return Response({'data': videos})
     except Exception as e:
@@ -217,7 +235,7 @@ def get_trending_videos(request):
     GET /api/videos/trending/?limit=12
     """
     try:
-        limit = int(request.query_params.get('limit', 12))
+        limit = safe_int(request.query_params.get('limit'), 12)
         
         # Récupère les vidéos les plus vues, ordonnées par vues décroissantes
         # Utilise service_client pour contourner les RLS si nécessaire
@@ -272,17 +290,20 @@ def search_videos(request):
     try:
         query = request.query_params.get('q', '')
         genre = request.query_params.get('genre')
-        year = request.query_params.get('year')
+        year = safe_int(request.query_params.get('year'), None)
         rating = request.query_params.get('rating')
-        limit = int(request.query_params.get('limit', 20))
+        limit = safe_int(request.query_params.get('limit'), 20)
         
         filters = {}
-        if genre:
+        if genre and genre not in ('null', '', 'undefined'):
             filters['genre'] = genre
-        if year:
-            filters['year'] = int(year)
-        if rating:
-            filters['rating'] = float(rating)
+        if year is not None:
+            filters['year'] = year
+        if rating and rating not in ('null', '', 'undefined'):
+            try:
+                filters['rating'] = float(rating)
+            except (ValueError, TypeError):
+                pass
         
         results = supabase_manager.search_videos(query, filters, limit)
         return Response({'data': results})
@@ -339,9 +360,9 @@ def search_folders_netflix(request):
     try:
         query = request.query_params.get('q', '').strip()
         genre = request.query_params.get('genre')
-        year = request.query_params.get('year')
-        media_type = request.query_params.get('type')  # 'movie', 'tv', ou None
-        limit = int(request.query_params.get('limit', 20))
+        year = safe_int(request.query_params.get('year'), None)
+        media_type = request.query_params.get('type')
+        limit = safe_int(request.query_params.get('limit'), 20)
         
         # Base query : dossiers racine uniquement (parent_id IS NULL)
         db_query = supabase_manager.service_client.table('folders').select('*').is_('parent_id', 'null')
@@ -352,15 +373,15 @@ def search_folders_netflix(request):
             db_query = db_query.or_(f"folder_name.ilike.%{query}%,title.ilike.%{query}%")
         
         # Filtre genre (si enrichi TMDB)
-        if genre:
+        if genre and genre not in ('null', '', 'undefined'):
             db_query = db_query.contains('genres', [genre])
         
         # Filtre année
-        if year:
-            db_query = db_query.eq('year', int(year))
+        if year is not None:
+            db_query = db_query.eq('year', year)
         
         # Filtre type (movie/tv) si enrichi TMDB
-        if media_type:
+        if media_type and media_type not in ('null', '', 'undefined'):
             db_query = db_query.eq('media_type', media_type)
         
         # Trier par date création (plus récent d'abord)
@@ -586,7 +607,8 @@ def get_watch_history(request):
     """Récupère l'historique de visionnage de l'utilisateur"""
     try:
         user_id = request.user.id
-        completed = request.query_params.get('completed', 'false').lower() == 'true'
+        completed_param = request.query_params.get('completed', 'false')
+        completed = completed_param.lower() == 'true'
         
         history = supabase_manager.get_watch_history(user_id, completed_only=completed)
         return Response({'data': history})
@@ -602,7 +624,7 @@ def update_watch_progress(request):
     try:
         user_id = request.user.id
         video_id = request.data.get('video_id')
-        progress = request.data.get('progress', 0)
+        progress = safe_int(request.data.get('progress'), 0)
         completed = request.data.get('completed', False)
         
         if not video_id:
@@ -668,7 +690,7 @@ def remove_from_watchlist(request, video_id):
 def get_comments(request, video_id):
     """Récupère les commentaires d'une vidéo"""
     try:
-        limit = int(request.query_params.get('limit', 50))
+        limit = safe_int(request.query_params.get('limit'), 50)
         comments = supabase_manager.get_comments_by_video(video_id, limit)
         return Response({'data': comments})
     except Exception as e:
@@ -730,16 +752,14 @@ def search_tmdb(request):
         import asyncio
         
         query = request.query_params.get('q', '')
-        year = request.query_params.get('year')
+        year = safe_int(request.query_params.get('year'), None)
         
         if not query:
             return Response({'error': 'Query parameter required'}, status=400)
         
-        year_int = int(year) if year else None
-        
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
-        results = loop.run_until_complete(search_and_suggest(query, year_int))
+        results = loop.run_until_complete(search_and_suggest(query, year))
         loop.close()
         
         return Response({'data': results})
