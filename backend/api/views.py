@@ -8,7 +8,9 @@ import logging
 import threading
 import requests
 import re
-from django.http import StreamingHttpResponse, JsonResponse, Http404
+import os
+import mimetypes
+from django.http import StreamingHttpResponse, JsonResponse, Http404, FileResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.utils.decorators import method_decorator
 from rest_framework.views import APIView
@@ -46,167 +48,156 @@ def safe_int(value, default=None):
         return default
 
 
-# Client Pyrogram global pour le streaming (singleton)
-_stream_client = None
-_stream_lock = threading.Lock()
-_client_ready = threading.Event()
-
-def init_stream_client():
-    """
-    Initialise le client Pyrogram dans un thread séparé
-    Évite de bloquer le thread principal WSGI
-    """
-    global _stream_client
-    
-    def start_client():
-        global _stream_client
-        try:
-            from pyrogram import Client
-            import asyncio
-            
-            loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(loop)
-            
-            _stream_client = Client(
-                "zeex_streamer",
-                api_id=TELEGRAM_API_ID,
-                api_hash=TELEGRAM_API_HASH,
-                bot_token=TELEGRAM_BOT_TOKEN,
-                in_memory=True,
-                no_updates=True
-            )
-            
-            loop.run_until_complete(_stream_client.start())
-            _client_ready.set()
-            logger.info("✅ Client de streaming Pyrogram démarré")
-            
-            # Garder le loop en vie
-            loop.run_forever()
-            
-        except Exception as e:
-            logger.error(f"❌ Erreur démarrage client streaming: {e}")
-    
-    # Démarrer dans un thread daemon
-    thread = threading.Thread(target=start_client, daemon=True)
-    thread.start()
-    
-    # Attendre que le client soit prêt (timeout 30s)
-    if not _client_ready.wait(timeout=30):
-        logger.error("❌ Timeout démarrage client streaming")
-
-def get_stream_client():
-    """Récupère le client de streaming (l'initialise si nécessaire)"""
-    global _stream_client
-    if _stream_client is None and not _client_ready.is_set():
-        init_stream_client()
-    return _stream_client
-
-
 # =============================================================================
-# ENDPOINTS DE STREAMING
+# ENDPOINTS DE STREAMING - VERSION FONCTIONNELLE WSGI
 # =============================================================================
 
 class StreamVideoView(APIView):
     """
     Vue pour streamer une vidéo depuis Telegram
     URL: /api/stream/<stream_id>/
+    Utilise l'API HTTP directe de Telegram (compatible WSGI)
     """
     permission_classes = [AllowAny]
     
     def get(self, request, stream_id):
-        """Gère le streaming d'une vidéo"""
+        """Gère le streaming d'une vidéo avec support des Range Requests"""
         try:
             # Valider le format du stream_id
             if not validate_stream_token(stream_id):
                 return Response({'error': 'Invalid stream ID format'}, status=400)
             
-            # Récupérer le file_id
+            # Récupérer le file_id depuis la base de données
             file_id = get_file_id_from_stream_id(stream_id)
             if not file_id:
                 raise Http404("Stream not found")
             
             # Récupérer les infos de la vidéo
             video = supabase_manager.get_video_by_file_id(file_id)
+            video_title = video.get('title', 'video') if video else 'video'
+            mime_type = video.get('mime_type', 'video/mp4') if video else 'video/mp4'
             
-            logger.info(f"📺 Streaming demandé: {stream_id[:8]}... -> {video.get('title', 'Unknown')[:30] if video else 'Unknown'}...")
+            logger.info(f"📺 Streaming demandé: {stream_id[:8]}... -> {video_title[:30]}...")
             
-            return self._stream_video(file_id, video)
+            # Récupérer le fichier depuis Telegram via HTTP API
+            return self._stream_from_telegram(file_id, video_title, mime_type, request)
             
         except Http404:
             raise
         except Exception as e:
             logger.error(f"❌ Erreur streaming {stream_id}: {e}", exc_info=True)
-            return Response({'error': 'Streaming error'}, status=500)
+            return Response({'error': 'Streaming error', 'details': str(e)}, status=500)
     
-    def _stream_video(self, file_id, video_info):
+    def _stream_from_telegram(self, file_id, video_title, mime_type, request):
         """
-        Stream le fichier depuis Telegram via HTTP range requests
-        Version synchrone compatible WSGI
+        Stream le fichier depuis Telegram via l'API HTTP Bot
+        Supporte les Range Requests pour la lecture progressive
         """
         try:
-            # Utiliser l'API HTTP de Telegram directement (plus stable que Pyrogram pour le streaming)
-            # Alternative: utiliser Pyrogram avec un thread pool
-            from concurrent.futures import ThreadPoolExecutor
-            import asyncio
+            # Étape 1: Obtenir le chemin du fichier via getFile
+            file_info_url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/getFile"
+            file_info_response = requests.post(file_info_url, json={'file_id': file_id}, timeout=30)
             
-            client = get_stream_client()
-            if not client:
-                return Response({'error': 'Stream service unavailable'}, status=503)
+            if file_info_response.status_code != 200:
+                logger.error(f"❌ Erreur getFile: {file_info_response.text}")
+                return Response({'error': 'Cannot access file'}, status=404)
             
-            # Déterminer le content-type
-            content_type = video_info.get('mime_type', 'video/mp4') if video_info else 'video/mp4'
-            file_size = video_info.get('file_size') if video_info else None
+            file_info = file_info_response.json()
+            if not file_info.get('ok'):
+                logger.error(f"❌ Telegram API error: {file_info}")
+                return Response({'error': 'File not found on Telegram'}, status=404)
             
-            # Générateur synchrone utilisant un executor
-            def sync_generator():
-                loop = asyncio.new_event_loop()
+            file_path = file_info['result']['file_path']
+            file_size = file_info['result'].get('file_size', 0)
+            
+            # Étape 2: Construire l'URL de téléchargement
+            download_url = f"https://api.telegram.org/file/bot{TELEGRAM_BOT_TOKEN}/{file_path}"
+            
+            # Étape 3: Gérer les Range Requests (pour lecture progressive)
+            range_header = request.META.get('HTTP_RANGE', '')
+            
+            if range_header:
+                # Parse Range header (ex: "bytes=0-1023")
+                return self._handle_range_request(download_url, range_header, file_size, mime_type, video_title)
+            else:
+                # Stream complet
+                return self._stream_full_file(download_url, file_size, mime_type, video_title)
                 
-                async def async_gen():
-                    async for chunk in client.stream_media(file_id, limit=STREAM_CHUNK_SIZE):
-                        yield chunk
-                
-                async def run_stream():
-                    async for chunk in async_gen():
-                        yield chunk
-                
-                # Exécuter dans le loop du thread de streaming
-                # Cette approche est complexe, utilisons une alternative plus simple:
-                pass
+        except Exception as e:
+            logger.error(f"❌ Erreur _stream_from_telegram: {e}", exc_info=True)
+            return Response({'error': 'Stream failed'}, status=500)
+    
+    def _handle_range_request(self, download_url, range_header, file_size, mime_type, video_title):
+        """
+        Gère les requêtes Range pour la lecture progressive (seek)
+        """
+        try:
+            # Parser le header Range (ex: "bytes=0-1023" ou "bytes=1024-")
+            range_match = re.match(r'bytes=(\d+)-(\d*)', range_header)
+            if not range_match:
+                return Response({'error': 'Invalid Range header'}, status=400)
             
-            # ALTERNATIVE PLUS SIMPLE: Téléchargement par chunks via thread pool
-            executor = ThreadPoolExecutor(max_workers=2)
+            start = int(range_match.group(1))
+            end = int(range_match.group(2)) if range_match.group(2) else file_size - 1
             
-            def chunk_generator():
-                """Générateur thread-safe pour les chunks"""
-                import asyncio
-                
-                async def download():
-                    chunks = []
-                    async for chunk in client.stream_media(file_id, limit=STREAM_CHUNK_SIZE):
-                        chunks.append(chunk)
-                        if len(chunks) >= 10:  # Buffer de 10 chunks
-                            break
-                    return chunks
-                
-                # Récupérer le loop du client
-                # Cette approche est fragile, mieux vaut utiliser requests vers l'API Telegram
-                
-                # SOLUTION ALTERNATIVE: Redirection vers l'API Telegram directe
-                # Ou utiliser un serveur de streaming dédié (nginx, etc.)
-                yield b''  # Placeholder
+            # Vérifier les limites
+            if start >= file_size:
+                return Response({'error': 'Range not satisfiable'}, status=416)
             
-            # Pour l'instant, retournons une erreur explicative
-            # Le streaming Pyrogram dans WSGI nécessite une architecture différente (ASGI)
+            end = min(end, file_size - 1)
+            length = end - start + 1
             
-            logger.warning("⚠️ Streaming via Pyrogram dans WSGI non implémenté")
-            return Response({
-                'error': 'Streaming architecture not ready',
-                'message': 'Use direct Telegram URL or implement ASGI (Daphne/Channels)',
-                'file_id': file_id[:20] + '...' if file_id else None
-            }, status=501)
+            # Faire une requête range à Telegram
+            headers = {'Range': f'bytes={start}-{end}'}
+            telegram_response = requests.get(download_url, headers=headers, stream=True, timeout=30)
+            
+            if telegram_response.status_code not in (200, 206):
+                logger.error(f"❌ Telegram range request failed: {telegram_response.status_code}")
+                return Response({'error': 'Source unavailable'}, status=502)
+            
+            # Créer la réponse Django avec le bon statut 206 Partial Content
+            response = StreamingHttpResponse(
+                telegram_response.iter_content(chunk_size=STREAM_CHUNK_SIZE),
+                status=206,
+                content_type=mime_type
+            )
+            
+            response['Content-Range'] = f'bytes {start}-{end}/{file_size}'
+            response['Content-Length'] = str(length)
+            response['Accept-Ranges'] = 'bytes'
+            response['Content-Disposition'] = f'inline; filename="{video_title}.mp4"'
+            
+            return response
             
         except Exception as e:
-            logger.error(f"❌ Erreur _stream_video: {e}", exc_info=True)
+            logger.error(f"❌ Erreur range request: {e}")
+            return Response({'error': 'Range request failed'}, status=500)
+    
+    def _stream_full_file(self, download_url, file_size, mime_type, video_title):
+        """
+        Stream le fichier complet (sans Range)
+        """
+        try:
+            telegram_response = requests.get(download_url, stream=True, timeout=30)
+            
+            if telegram_response.status_code != 200:
+                logger.error(f"❌ Telegram request failed: {telegram_response.status_code}")
+                return Response({'error': 'Source unavailable'}, status=502)
+            
+            # Créer la réponse de streaming
+            response = StreamingHttpResponse(
+                telegram_response.iter_content(chunk_size=STREAM_CHUNK_SIZE),
+                content_type=mime_type
+            )
+            
+            response['Content-Length'] = str(file_size) if file_size else telegram_response.headers.get('Content-Length', '')
+            response['Accept-Ranges'] = 'bytes'
+            response['Content-Disposition'] = f'inline; filename="{video_title}.mp4"'
+            
+            return response
+            
+        except Exception as e:
+            logger.error(f"❌ Erreur stream full file: {e}")
             return Response({'error': 'Stream failed'}, status=500)
 
 
