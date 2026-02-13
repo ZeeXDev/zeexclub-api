@@ -18,7 +18,7 @@ import {
 
 // État
 let currentVideo = null;
-let currentServer = 'zeex';
+let currentServer = 'zeex'; // 'zeex' ou 'filemoon'
 let watchInterval = null;
 let player = null;
 
@@ -39,7 +39,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     
     await loadVideo(videoId);
     initPlayerControls();
-    initComments();
     initServerSelector();
 });
 
@@ -57,6 +56,10 @@ async function loadVideo(videoId) {
         }
         
         currentVideo = data;
+        
+        console.log('Vidéo chargée:', currentVideo);
+        console.log('Zeex URL:', currentVideo.zeex_url);
+        console.log('Filemoon URL:', currentVideo.filemoon_url);
         
         // Mettre à jour l'UI
         updateVideoInfo(data);
@@ -120,13 +123,59 @@ function updateVideoInfo(video) {
  */
 function setupPlayer(video) {
     const container = document.getElementById('player-container');
-    if (!container) return;
+    if (!container) {
+        console.error('Container player introuvable');
+        return;
+    }
     
-    // URL de streaming
-    const streamUrl = video.zeex_url;
+    // Choisir l'URL selon le serveur actif
+    let streamUrl = null;
     
+    if (currentServer === 'zeex') {
+        streamUrl = video.zeex_url;
+    } else if (currentServer === 'filemoon') {
+        streamUrl = video.filemoon_url;
+    }
+    
+    console.log(`Setup player - Serveur: ${currentServer}, URL: ${streamUrl}`);
+    
+    if (!streamUrl) {
+        container.innerHTML = `
+            <div style="display: flex; align-items: center; justify-content: center; height: 100%; color: white; flex-direction: column; gap: 1rem;">
+                <p>❌ Aucune source vidéo disponible</p>
+                ${video.filemoon_url ? '<button onclick="switchServer(\'filemoon\')" style="padding: 0.5rem 1rem; background: var(--primary-red); border: none; color: white; border-radius: 4px; cursor: pointer;">Essayer Filemoon</button>' : ''}
+            </div>
+        `;
+        return;
+    }
+    
+    // Si c'est Filemoon (iframe)
+    if (currentServer === 'filemoon' && streamUrl.includes('filemoon')) {
+        container.innerHTML = `
+            <iframe 
+                src="${streamUrl}" 
+                width="100%" 
+                height="100%" 
+                frameborder="0" 
+                allowfullscreen
+                allow="autoplay; encrypted-media"
+                style="background: #000;"
+            ></iframe>
+        `;
+        player = null;
+        return;
+    }
+    
+    // Sinon lecteur natif HTML5 (pour Zeex/Telegram)
     container.innerHTML = `
-        <video id="main-player" controls autoplay playsinline style="width: 100%; height: 100%;">
+        <video 
+            id="main-player" 
+            controls 
+            autoplay 
+            playsinline 
+            preload="metadata"
+            style="width: 100%; height: 100%; background: #000;"
+        >
             <source src="${streamUrl}" type="${video.mime_type || 'video/mp4'}">
             Votre navigateur ne supporte pas la lecture vidéo.
         </video>
@@ -134,13 +183,25 @@ function setupPlayer(video) {
     
     player = document.getElementById('main-player');
     
-    // Restaurer la progression si disponible
-    restoreProgress();
+    // Gestion des erreurs du player
+    player.addEventListener('error', (e) => {
+        console.error('Erreur lecteur:', player.error);
+        const errorCode = player.error ? player.error.code : 'unknown';
+        showToast(`Erreur lecture vidéo (code: ${errorCode})`, 'error');
+    });
     
-    // Événements du player
+    // Événements pour le tracking
     player.addEventListener('timeupdate', onTimeUpdate);
     player.addEventListener('ended', onVideoEnded);
-    player.addEventListener('error', onPlayerError);
+    player.addEventListener('loadedmetadata', () => {
+        console.log('Vidéo prête, durée:', player.duration);
+    });
+    player.addEventListener('canplay', () => {
+        console.log('La vidéo peut être lue');
+    });
+    
+    // Restaurer la progression
+    restoreProgress();
 }
 
 /**
@@ -150,32 +211,21 @@ function switchServer(server) {
     if (!currentVideo) return;
     
     currentServer = server;
-    const container = document.getElementById('player-container');
     
-    // Mettre à jour les boutons
+    // Mettre à jour les boutons visuellement
     document.querySelectorAll('.server-btn').forEach(btn => {
-        btn.classList.toggle('active', btn.dataset.server === server);
+        const isActive = btn.dataset.server === server;
+        btn.classList.toggle('active', isActive);
+        btn.style.opacity = isActive ? '1' : '0.6';
+        btn.style.border = isActive ? '2px solid var(--primary-red)' : '2px solid transparent';
     });
     
-    if (server === 'zeex') {
-        // Lecteur natif
-        setupPlayer(currentVideo);
-    } else if (server === 'filemoon' && currentVideo.filemoon_url) {
-        // Iframe Filemoon
-        container.innerHTML = `
-            <iframe 
-                src="${currentVideo.filemoon_url}" 
-                width="100%" 
-                height="100%" 
-                frameborder="0" 
-                allowfullscreen
-                allow="autoplay; encrypted-media"
-            ></iframe>
-        `;
-        player = null; // Pas de tracking sur Filemoon
-    } else {
-        showToast('Serveur non disponible', 'error');
-    }
+    console.log(`Changement serveur: ${server}`);
+    
+    // Recharger le player
+    setupPlayer(currentVideo);
+    
+    showToast(`Serveur: ${server === 'zeex' ? 'Telegram' : 'Filemoon'}`, 'info');
 }
 
 /**
@@ -184,6 +234,28 @@ function switchServer(server) {
 function initServerSelector() {
     const selector = document.getElementById('server-list');
     if (!selector) return;
+    
+    // Créer les boutons serveur s'ils n'existent pas
+    if (selector.children.length === 0) {
+        selector.innerHTML = `
+            <button class="server-btn active" data-server="zeex" style="padding: 1rem; background: rgba(255,255,255,0.1); border: 2px solid var(--primary-red); border-radius: 8px; color: white; cursor: pointer; display: flex; align-items: center; gap: 0.5rem;">
+                <span>📡</span>
+                <div>
+                    <div style="font-weight: bold;">Telegram</div>
+                    <div style="font-size: 0.8rem; color: var(--light-gray);">HD 1080p</div>
+                </div>
+            </button>
+            ${currentVideo?.filemoon_url ? `
+            <button class="server-btn" data-server="filemoon" style="padding: 1rem; background: rgba(255,255,255,0.1); border: 2px solid transparent; border-radius: 8px; color: white; cursor: pointer; display: flex; align-items: center; gap: 0.5rem; opacity: 0.6;">
+                <span>☁️</span>
+                <div>
+                    <div style="font-weight: bold;">Filemoon</div>
+                    <div style="font-size: 0.8rem; color: var(--light-gray);">4K Ultra HD</div>
+                </div>
+            </button>
+            ` : ''}
+        `;
+    }
     
     selector.addEventListener('click', (e) => {
         const btn = e.target.closest('.server-btn');
@@ -195,6 +267,9 @@ function initServerSelector() {
         }
     });
 }
+
+// Exposer la fonction globalement pour le bouton d'erreur
+window.switchServer = switchServer;
 
 /**
  * Tracking du visionnage
@@ -243,9 +318,6 @@ async function saveProgress() {
 function onVideoEnded() {
     saveProgress();
     showToast('Vidéo terminée ! 🎉', 'success');
-    
-    // Proposer la vidéo suivante si disponible
-    // TODO: Implémenter la logique de playlist
 }
 
 function onPlayerError(e) {
@@ -255,8 +327,8 @@ function onPlayerError(e) {
 
 function restoreProgress() {
     // La progression sera restaurée automatiquement par l'API
-    // qui retourne l'historique utilisateur
     // Pour l'instant, on commence au début
+    console.log('Restauration progression...');
 }
 
 /**
@@ -318,7 +390,7 @@ async function initComments() {
         
         if (!text) return;
         
-        // ✅ CORRECTION: Vérifier authentification sans redirection forcée
+        // Vérifier authentification sans redirection forcée
         const { data: { user } } = await import('./supabase-client.js').then(m => m.supabase.auth.getUser());
         if (!user) {
             showToast('Connectez-vous pour commenter', 'error');
@@ -422,7 +494,6 @@ async function loadSimilarVideos(video) {
         grid.innerHTML = '';
         
         similar.forEach((v, index) => {
-            // ✅ CORRECTION: Importer createMovieCard dynamiquement si nécessaire
             const card = document.createElement('div');
             card.className = 'movie-card';
             card.style.animationDelay = `${index * 0.1}s`;
