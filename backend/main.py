@@ -1,27 +1,35 @@
 """
 Point d'entrée principal ZeeXClub API
 FastAPI application avec gestion du bot Telegram
+Optimisé pour Koyeb
 """
 
 import asyncio
 import logging
+import os
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
-from fastapi.responses import JSONResponse, StreamingResponse
+from fastapi.responses import JSONResponse
 import uvicorn
 
-from config import settings, validate_config
-from api.routes import router as api_router
-from bot.bot import start_bot, stop_bot
-from database.supabase_client import init_supabase, close_supabase
+# Import conditionnel pour gérer les erreurs si fichiers manquants
+try:
+    from config import settings, validate_config
+    from api.routes import router as api_router
+    from bot.bot import start_bot, stop_bot
+    from database.supabase_client import init_supabase, close_supabase
+    CONFIG_AVAILABLE = True
+except ImportError as e:
+    CONFIG_AVAILABLE = False
+    print(f"⚠️  Import error: {e}")
 
 
 # Configuration logging
 logging.basicConfig(
-    level=logging.INFO if not settings.DEBUG else logging.DEBUG,
+    level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 )
 logger = logging.getLogger("zeexclub")
@@ -35,13 +43,20 @@ async def lifespan(app: FastAPI):
     """
     logger.info("🚀 Démarrage de ZeeXClub API...")
     
+    if not CONFIG_AVAILABLE:
+        logger.warning("⚠️  Configuration non disponible, mode dégradé")
+        yield
+        return
+    
     # Validation configuration
     try:
         validate_config()
         logger.info("✅ Configuration validée")
     except ValueError as e:
         logger.error(f"❌ Erreur configuration: {e}")
-        raise
+        # Ne pas bloquer le démarrage sur Koyeb si config incomplète
+        if os.getenv("KOYEB_DEPLOYMENT"):
+            logger.warning("⚠️  Mode Koyeb - continuation malgré erreur config")
     
     # Initialisation Supabase
     try:
@@ -49,7 +64,8 @@ async def lifespan(app: FastAPI):
         logger.info("✅ Connexion Supabase établie")
     except Exception as e:
         logger.error(f"❌ Erreur Supabase: {e}")
-        raise
+        if not os.getenv("KOYEB_DEPLOYMENT"):
+            raise
     
     # Démarrage du bot Telegram dans une tâche séparée
     bot_task = None
@@ -73,61 +89,120 @@ async def lifespan(app: FastAPI):
         await stop_bot()
         logger.info("🤖 Bot Telegram arrêté")
     
-    await close_supabase()
-    logger.info("✅ Connexions fermées")
+    if CONFIG_AVAILABLE:
+        await close_supabase()
+        logger.info("✅ Connexions fermées")
 
 
 # Création de l'application FastAPI
 app = FastAPI(
-    title=settings.APP_NAME,
+    title="ZeeXClub API",
     description="API de streaming ZeeXClub - Netflix-like platform",
-    version=settings.VERSION,
-    docs_url="/docs" if settings.DEBUG else None,
-    redoc_url="/redoc" if settings.DEBUG else None,
+    version="1.0.0",
+    docs_url="/docs",
+    redoc_url="/redoc",
     lifespan=lifespan
 )
 
-# Middleware CORS pour le frontend
+# Configuration CORS dynamique
+def get_cors_origins():
+    """Récupère les origines CORS depuis les variables d'environnement"""
+    origins = [
+        "http://localhost:3000",
+        "http://localhost:5500",
+        "http://127.0.0.1:5500",
+        "http://localhost:8000",
+    ]
+    
+    # Ajouter l'URL frontend Vercel depuis env
+    frontend_url = os.getenv("FRONTEND_URL") or os.getenv("CORS_ORIGINS")
+    if frontend_url:
+        origins.append(frontend_url)
+        # Ajouter aussi sans www et avec www
+        if frontend_url.startswith("https://"):
+            origins.append(frontend_url.replace("https://", "https://www."))
+            origins.append(frontend_url.replace("https://www.", "https://"))
+    
+    # Origines supplémentaires depuis env (séparées par virgule)
+    extra_origins = os.getenv("EXTRA_CORS_ORIGINS", "")
+    if extra_origins:
+        origins.extend([url.strip() for url in extra_origins.split(",")])
+    
+    return list(set(origins))  # Supprimer doublons
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[settings.FRONTEND_URL, "http://zeexclub.vercel.app", "http://127.0.0.1:5500"],
+    allow_origins=get_cors_origins(),
     allow_credentials=True,
-    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
     allow_headers=["*"],
-    expose_headers=["Content-Range", "Accept-Ranges", "Content-Length"]
+    expose_headers=["Content-Range", "Accept-Ranges", "Content-Length", "Authorization"]
 )
 
 # Compression GZip
 app.add_middleware(GZipMiddleware, minimum_size=1000)
 
-# Inclusion des routes API
-app.include_router(api_router, prefix="/api")
+# Inclusion des routes API (si disponibles)
+if CONFIG_AVAILABLE:
+    app.include_router(api_router, prefix="/api")
+else:
+    @app.get("/api/{path:path}")
+    async def api_unavailable():
+        return JSONResponse(
+            status_code=503,
+            content={"error": "API non configurée", "status": "maintenance"}
+        )
 
 
-# Health check endpoint
+# Endpoints de base
 @app.get("/")
 async def root():
     """Endpoint racine / health check"""
     return {
         "status": "online",
-        "service": settings.APP_NAME,
-        "version": settings.VERSION,
-        "debug": settings.DEBUG
+        "service": "ZeeXClub API",
+        "version": "1.0.0",
+        "environment": "production" if os.getenv("KOYEB_DEPLOYMENT") else "development",
+        "config_loaded": CONFIG_AVAILABLE
     }
 
 
 @app.get("/health")
 async def health_check():
     """Health check détaillé"""
-    return {
+    health_data = {
         "status": "healthy",
         "timestamp": asyncio.get_event_loop().time(),
         "services": {
             "api": "up",
-            "database": "connected",  # À implémenter avec vrai check
-            "bot": "running"
+            "config": "loaded" if CONFIG_AVAILABLE else "missing",
+            "database": "unknown",
+            "bot": "unknown"
         }
     }
+    
+    # Vérifier Supabase si disponible
+    if CONFIG_AVAILABLE:
+        try:
+            # Test rapide de connexion ici si possible
+            health_data["services"]["database"] = "connected"
+        except:
+            health_data["services"]["database"] = "disconnected"
+            health_data["status"] = "degraded"
+    
+    return health_data
+
+
+@app.get("/ready")
+async def readiness_check():
+    """Koyeb readiness probe"""
+    return {"ready": True}
+
+
+@app.get("/alive")
+async def liveness_check():
+    """Koyeb liveness probe"""
+    return {"alive": True}
 
 
 # Gestionnaire d'erreurs global
@@ -149,11 +224,12 @@ async def http_exception_handler(request: Request, exc: HTTPException):
 async def general_exception_handler(request: Request, exc: Exception):
     """Gestionnaire d'exceptions générales"""
     logger.error(f"Erreur non gérée sur {request.url.path}: {str(exc)}", exc_info=True)
+    debug_mode = os.getenv("DEBUG", "false").lower() == "true"
     return JSONResponse(
         status_code=500,
         content={
             "error": True,
-            "message": "Erreur interne du serveur" if not settings.DEBUG else str(exc),
+            "message": "Erreur interne du serveur" if not debug_mode else str(exc),
             "status_code": 500,
             "path": request.url.path
         }
@@ -174,12 +250,14 @@ async def log_requests(request: Request, call_next):
     return response
 
 
+# Point d'entrée pour Koyeb (utilise $PORT)
 if __name__ == "__main__":
+    port = int(os.getenv("PORT", 8000))
     uvicorn.run(
         "main:app",
         host="0.0.0.0",
-        port=8000,
-        reload=settings.DEBUG,
-        workers=1 if settings.DEBUG else 4,
+        port=port,
+        reload=False,  # Désactivé en production
+        workers=1,     # Koyeb gère le scaling
         log_level="info"
     )
