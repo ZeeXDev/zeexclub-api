@@ -14,7 +14,7 @@ const API_BASE_URL = isProduction
 // Configuration Supabase (lecture seule pour le frontend)
 const SUPABASE_CONFIG = {
     url: 'https://hxdtaqnfnpzqndhqiopi.supabase.co',  // Remplacer
-    anonKey: 'sb_publishable_LKwjDQ-9Oy9gvpO29YWlCg_vsY7xuyW'  // Remplacer par clé anon (pas la service key!)
+    anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imh4ZHRhcW5mbnB6cW5kaHFpb3BpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA1NzE5MDIsImV4cCI6MjA4NjE0NzkwMn0.HbvHp5WRt1AmbKB1FuGixXTjzPAQChIxQhEVOIaa_Ws'  // Remplacer par clé anon (pas la service key!)
 };
 
 // Configuration App

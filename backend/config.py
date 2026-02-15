@@ -26,7 +26,7 @@ class Settings(BaseSettings):
     
     # Supabase
     SUPABASE_URL: str = Field(default="https://hxdtaqnfnpzqndhqiopi.supabase.co", env="SUPABASE_URL")
-    SUPABASE_KEY: str = Field(default="sb_publishable_LKwjDQ-9Oy9gvpO29YWlCg_vsY7xuyW", env="SUPABASE_KEY")
+    SUPABASE_KEY: str = Field(default="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imh4ZHRhcW5mbnB6cW5kaHFpb3BpIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MDU3MTkwMiwiZXhwIjoyMDg2MTQ3OTAyfQ.JSekTT6re-zzyf4effXCfqZccAe_d2bmnQ6bVeH45aM", env="SUPABASE_KEY")
     SUPABASE_SERVICE_KEY: str = Field(default="sb_secret_ijnE_sPpcVJdd5pGLMtg6w_FyHWG46H", env="SUPABASE_SERVICE_KEY")
     
     # Telegram Bot
