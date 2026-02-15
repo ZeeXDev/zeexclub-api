@@ -1,195 +1,270 @@
-// frontend/js/catalog.js
 /**
- * Logique spécifique au catalogue - VERSION NETFLIX
- * Recherche de SÉRIES/FILMS (dossiers) pas d'épisodes individuels
+ * Page Catalogue - Grille de films/séries avec filtres
  */
 
 import api from './api.js';
-import { createMovieCard, showToast, handleApiError, debounce } from './utils.js';
+import { APP_CONFIG } from './config.js';
 
-class CatalogManager {
+class CatalogPage {
     constructor() {
-        this.filters = {
-            type: 'all',        // 'all', 'movie', 'tv'
-            genre: null,
-            year: null,
-            rating: 0,
-            query: ''
-        };
-        this.page = 1;
+        this.currentPage = 1;
+        this.totalPages = 1;
+        this.currentFilters = {};
         this.isLoading = false;
+        
         this.init();
     }
-    
+
     init() {
-        this.loadSeries();
-        this.initInfiniteScroll();
-        this.initFilters();
+        this.parseUrlParams();
+        this.setupFilters();
+        this.loadCatalog();
+        this.setupEventListeners();
     }
-    
-    /**
-     * ✅ NOUVEAU: Charge les SÉRIES/FILMS (dossiers) pas les épisodes
-     */
-    async loadSeries(append = false) {
-        if (this.isLoading) return;
-        this.isLoading = true;
+
+    parseUrlParams() {
+        const params = new URLSearchParams(window.location.search);
         
+        this.currentFilters = {
+            type: params.get('type') || null,
+            genre: params.get('genre') || null,
+            year: params.get('year') || null,
+            search: params.get('search') || null,
+            trending: params.get('trending') === 'true',
+            recent: params.get('recent') === 'true'
+        };
+
+        // Mise à jour titre
+        this.updatePageTitle();
+    }
+
+    updatePageTitle() {
+        const title = document.querySelector('.catalog-title');
+        if (!title) return;
+
+        if (this.currentFilters.search) {
+            title.textContent = `Résultats pour "${this.currentFilters.search}"`;
+        } else if (this.currentFilters.type === 'movie') {
+            title.textContent = 'Films';
+        } else if (this.currentFilters.type === 'series') {
+            title.textContent = 'Séries';
+        } else if (this.currentFilters.trending) {
+            title.textContent = 'Tendances';
+        } else if (this.currentFilters.recent) {
+            title.textContent = 'Nouveautés';
+        } else {
+            title.textContent = 'Catalogue';
+        }
+    }
+
+    setupFilters() {
+        // Remplir les filtres si nécessaire
+        this.loadGenres();
+    }
+
+    async loadGenres() {
         try {
-            const result = await api.searchFolders(this.filters.query, {
-                type: this.filters.type === 'all' ? null : this.filters.type,
-                genre: this.filters.genre,
-                year: this.filters.year,
-                limit: 20
-            });
+            const response = await api.getGenres();
+            const genres = response.data || [];
             
-            this.renderSeriesCards(result.results || [], append);
-            this.updateResultsCount(result.count || 0);
+            // Peupler le dropdown de genres si présent
+            const genreSelect = document.getElementById('genreFilter');
+            if (genreSelect) {
+                genreSelect.innerHTML = '<option value="">Tous les genres</option>' +
+                    genres.map(g => `<option value="${g.name}">${g.name}</option>`).join('');
+                
+                if (this.currentFilters.genre) {
+                    genreSelect.value = this.currentFilters.genre;
+                }
+            }
+        } catch (error) {
+            console.error('Erreur chargement genres:', error);
+        }
+    }
+
+    async loadCatalog() {
+        if (this.isLoading) return;
+        
+        this.isLoading = true;
+        this.showLoading(true);
+
+        try {
+            let response;
+
+            if (this.currentFilters.search) {
+                response = await api.searchShows(
+                    this.currentFilters.search, 
+                    this.currentFilters.type
+                );
+            } else if (this.currentFilters.trending) {
+                response = await api.getTrending(
+                    this.currentFilters.type || 'all', 
+                    'week'
+                );
+                response = { data: response.data }; // Normalisation
+            } else if (this.currentFilters.recent) {
+                response = await api.getRecent(this.currentFilters.type);
+            } else {
+                const params = {
+                    page: this.currentPage,
+                    limit: APP_CONFIG.itemsPerPage,
+                    ...this.currentFilters
+                };
+                response = await api.getShows(params);
+            }
+
+            const shows = response.data || [];
+            this.totalPages = response.pagination?.total_pages || 1;
+            
+            this.renderGrid(shows);
+            this.renderPagination();
             
         } catch (error) {
-            handleApiError(error);
+            console.error('Erreur chargement catalogue:', error);
+            this.showError('Impossible de charger le catalogue');
         } finally {
             this.isLoading = false;
+            this.showLoading(false);
         }
     }
-    
-    /**
-     * ✅ NOUVEAU: Rend les cartes de SÉRIES (pas d'épisodes)
-     */
-    renderSeriesCards(series, append = false) {
-        const grid = document.getElementById('catalog-grid');
+
+    renderGrid(shows) {
+        const grid = document.getElementById('catalogGrid');
         if (!grid) return;
-        
-        // Retirer les skeletons si première charge
-        if (!append) {
-            grid.innerHTML = '';
-        }
-        
-        if (!series || series.length === 0) {
-            if (!append) {
-                grid.innerHTML = `
-                    <div class="empty-catalog">
-                        <svg class="empty-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1">
-                            <circle cx="11" cy="11" r="8"></circle>
-                            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-                        </svg>
-                        <h3>Aucun résultat trouvé</h3>
-                        <p>Essayez de modifier vos filtres ou votre recherche</p>
-                    </div>
-                `;
-            }
+
+        if (shows.length === 0) {
+            grid.innerHTML = `
+                <div class="empty-state" style="grid-column: 1/-1;">
+                    <i class="fas fa-film"></i>
+                    <h3>Aucun résultat</h3>
+                    <p>Essayez d'autres critères de recherche</p>
+                </div>
+            `;
             return;
         }
-        
-        series.forEach((item, index) => {
-            const card = this.createSeriesCard(item, index);
-            if (card) {
-                grid.appendChild(card);
-            }
-        });
+
+        grid.innerHTML = shows.map(show => this.createCatalogCard(show)).join('');
     }
-    
-    /**
-     * ✅ NOUVEAU: Crée une carte de SÉRIE/FILM (redirige vers details.html)
-     */
-    createSeriesCard(series, index) {
-        const card = document.createElement('div');
-        card.className = 'series-card';
-        card.style.animationDelay = `${index * 0.05}s`;
+
+    createCatalogCard(show) {
+        const imageUrl = api.getImageUrl(show.poster_path, APP_CONFIG.posterSize);
+        const year = show.release_date ? new Date(show.release_date).getFullYear() : 'N/A';
+        const typeLabel = show.type === 'movie' ? 'Film' : 'Série';
         
-        const posterUrl = series.poster_url || series.poster_url_small || '/img/default-poster.png';
-        const title = series.title || series.folder_name;
-        const isSeries = series.has_subfolders || series.season_count > 0;
-        
-        card.innerHTML = `
-            <div class="card-image">
-                <img src="${posterUrl}" alt="${escapeHtml(title)}" loading="lazy">
-                <div class="card-overlay">
-                    <button class="info-btn">
-                        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
-                    </button>
+        return `
+            <div class="movie-card catalog-card" data-id="${show.id}">
+                <img src="${imageUrl}" alt="${show.title}" class="movie-poster" loading="lazy">
+                <div class="movie-info">
+                    <span class="catalog-type">${typeLabel}</span>
+                    <h3 class="movie-title">${show.title}</h3>
+                    <div class="movie-meta">
+                        <span>${year}</span>
+                        ${show.rating ? `<span class="movie-rating"><i class="fas fa-star"></i> ${show.rating.toFixed(1)}</span>` : ''}
+                    </div>
                 </div>
-                ${isSeries ? '<span class="series-badge">SÉRIE</span>' : '<span class="movie-badge">FILM</span>'}
-            </div>
-            <div class="card-content">
-                <h3 class="card-title">${escapeHtml(title)}</h3>
-                <div class="card-meta">
-                    ${series.year ? `<span class="card-year">${series.year}</span>` : ''}
-                    ${series.rating ? `<span class="card-rating">⭐ ${series.rating.toFixed(1)}</span>` : ''}
-                    ${isSeries ? `<span class="card-episodes">${series.total_episodes || 0} épisodes</span>` : ''}
-                </div>
-                ${series.genres ? `<div class="card-genres">${series.genres.slice(0, 3).join(' • ')}</div>` : ''}
+                <a href="details.html?id=${show.id}" class="card-link"></a>
             </div>
         `;
-        
-        // ✅ Redirection vers la page de détails (pas le player directement)
-        card.addEventListener('click', () => {
-            window.location.href = `details.html?id=${series.id}`;
-        });
-        
-        return card;
     }
-    
-    updateResultsCount(total) {
-        const el = document.getElementById('results-total');
-        if (el) {
-            el.textContent = total.toLocaleString();
+
+    renderPagination() {
+        const container = document.getElementById('pagination');
+        if (!container || this.totalPages <= 1) {
+            if (container) container.innerHTML = '';
+            return;
+        }
+
+        let html = '';
+        
+        // Bouton précédent
+        if (this.currentPage > 1) {
+            html += `<button class="page-btn" onclick="catalog.goToPage(${this.currentPage - 1})">
+                <i class="fas fa-chevron-left"></i>
+            </button>`;
+        }
+
+        // Pages
+        const startPage = Math.max(1, this.currentPage - 2);
+        const endPage = Math.min(this.totalPages, this.currentPage + 2);
+
+        if (startPage > 1) {
+            html += `<button class="page-btn" onclick="catalog.goToPage(1)">1</button>`;
+            if (startPage > 2) html += `<span class="page-dots">...</span>`;
+        }
+
+        for (let i = startPage; i <= endPage; i++) {
+            const active = i === this.currentPage ? 'active' : '';
+            html += `<button class="page-btn ${active}" onclick="catalog.goToPage(${i})">${i}</button>`;
+        }
+
+        if (endPage < this.totalPages) {
+            if (endPage < this.totalPages - 1) html += `<span class="page-dots">...</span>`;
+            html += `<button class="page-btn" onclick="catalog.goToPage(${this.totalPages})">${this.totalPages}</button>`;
+        }
+
+        // Bouton suivant
+        if (this.currentPage < this.totalPages) {
+            html += `<button class="page-btn" onclick="catalog.goToPage(${this.currentPage + 1})">
+                <i class="fas fa-chevron-right"></i>
+            </button>`;
+        }
+
+        container.innerHTML = html;
+    }
+
+    goToPage(page) {
+        this.currentPage = page;
+        this.loadCatalog();
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    setupEventListeners() {
+        // Filtres
+        const typeFilter = document.getElementById('typeFilter');
+        const genreFilter = document.getElementById('genreFilter');
+        const yearFilter = document.getElementById('yearFilter');
+        const sortFilter = document.getElementById('sortFilter');
+
+        const applyFilters = () => {
+            this.currentFilters.type = typeFilter?.value || null;
+            this.currentFilters.genre = genreFilter?.value || null;
+            this.currentFilters.year = yearFilter?.value || null;
+            this.currentPage = 1;
+            this.loadCatalog();
+        };
+
+        typeFilter?.addEventListener('change', applyFilters);
+        genreFilter?.addEventListener('change', applyFilters);
+        yearFilter?.addEventListener('change', applyFilters);
+        sortFilter?.addEventListener('change', () => {
+            // Implémenter le tri
+            this.loadCatalog();
+        });
+    }
+
+    showLoading(show) {
+        const overlay = document.getElementById('loadingOverlay');
+        if (overlay) {
+            overlay.classList.toggle('active', show);
         }
     }
-    
-    initInfiniteScroll() {
-        const observer = new IntersectionObserver((entries) => {
-            entries.forEach(entry => {
-                if (entry.isIntersecting && !this.isLoading) {
-                    this.page++;
-                    this.loadSeries(true);
-                }
-            });
-        }, { rootMargin: '100px' });
-        
-        const sentinel = document.createElement('div');
-        sentinel.id = 'scroll-sentinel';
-        sentinel.style.height = '10px';
-        document.getElementById('catalog-grid')?.appendChild(sentinel);
-        observer.observe(sentinel);
-    }
-    
-    initFilters() {
-        // Filtre type (Film/Série/Tout)
-        document.querySelectorAll('.filter-type').forEach(chip => {
-            chip.addEventListener('click', (e) => {
-                document.querySelectorAll('.filter-type').forEach(c => c.classList.remove('active'));
-                e.target.classList.add('active');
-                
-                const type = e.target.dataset.type; // 'all', 'movie', 'tv'
-                this.updateFilter('type', type);
-            });
-        });
-        
-        // Recherche
-        const searchInput = document.getElementById('catalog-search');
-        if (searchInput) {
-            searchInput.addEventListener('input', debounce((e) => {
-                this.updateFilter('query', e.target.value);
-            }, 300));
+
+    showError(message) {
+        const grid = document.getElementById('catalogGrid');
+        if (grid) {
+            grid.innerHTML = `
+                <div class="error-container" style="grid-column: 1/-1;">
+                    <div class="error-code"><i class="fas fa-exclamation-triangle"></i></div>
+                    <p class="error-message">${message}</p>
+                    <button class="btn btn-primary" onclick="location.reload()">Réessayer</button>
+                </div>
+            `;
         }
-    }
-    
-    updateFilter(key, value) {
-        this.filters[key] = value;
-        this.page = 1;
-        this.loadSeries();
     }
 }
 
-// Initialiser
+// Initialisation
+let catalog;
 document.addEventListener('DOMContentLoaded', () => {
-    window.catalogManager = new CatalogManager();
+    catalog = new CatalogPage();
 });
-
-// Helper
-function escapeHtml(text) {
-    if (!text) return '';
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
-}

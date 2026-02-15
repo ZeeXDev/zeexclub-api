@@ -1,0 +1,210 @@
+/* ============================================
+   ZeeXClub - Styles Page Ma Liste (mylist.html)
+   ============================================ */
+
+.mylist-header {
+    padding: 120px 4% 40px;
+    background: linear-gradient(
+        to bottom,
+        rgba(20,20,20,0.9),
+        var(--bg-dark)
+    );
+    border-bottom: 1px solid var(--border-color);
+}
+
+.mylist-title {
+    font-size: 2.5rem;
+    font-weight: 700;
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+.mylist-title i {
+    color: var(--primary-color);
+}
+
+.mylist-count {
+    color: var(--text-secondary);
+    font-size: 1.1rem;
+}
+
+.mylist-actions {
+    display: flex;
+    gap: 15px;
+    margin-top: 25px;
+}
+
+.mylist-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 30px;
+    padding: 40px 4%;
+    max-width: 1600px;
+    margin: 0 auto;
+}
+
+/* Carte avec bouton suppression */
+.mylist-card {
+    position: relative;
+    border-radius: var(--radius-md);
+    overflow: hidden;
+    transition: var(--transition);
+    background: var(--bg-card);
+    group: true;
+}
+
+.mylist-card:hover {
+    transform: translateY(-8px);
+    box-shadow: var(--shadow-lg);
+}
+
+.mylist-card .remove-btn {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    width: 35px;
+    height: 35px;
+    border-radius: 50%;
+    background: rgba(0,0,0,0.7);
+    color: white;
+    border: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1rem;
+    opacity: 0;
+    transform: scale(0.8);
+    transition: all 0.3s;
+    z-index: 20;
+    backdrop-filter: blur(4px);
+}
+
+.mylist-card:hover .remove-btn {
+    opacity: 1;
+    transform: scale(1);
+}
+
+.mylist-card .remove-btn:hover {
+    background: var(--error-color);
+    transform: scale(1.1) rotate(90deg);
+}
+
+.mylist-card .movie-poster {
+    width: 100%;
+    aspect-ratio: 2/3;
+    object-fit: cover;
+}
+
+.mylist-card .movie-info {
+    padding: 15px;
+}
+
+.mylist-card .added-date {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    margin-top: 8px;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+/* États vides */
+.empty-mylist {
+    text-align: center;
+    padding: 100px 20px;
+    max-width: 500px;
+    margin: 0 auto;
+}
+
+.empty-mylist i {
+    font-size: 5rem;
+    color: var(--text-muted);
+    margin-bottom: 30px;
+    opacity: 0.5;
+}
+
+.empty-mylist h2 {
+    font-size: 1.8rem;
+    margin-bottom: 15px;
+    color: var(--text-primary);
+}
+
+.empty-mylist p {
+    color: var(--text-secondary);
+    margin-bottom: 30px;
+    line-height: 1.6;
+}
+
+/* Filtres ma liste */
+.mylist-filters {
+    display: flex;
+    gap: 20px;
+    padding: 0 4% 30px;
+    border-bottom: 1px solid var(--border-color);
+    max-width: 1600px;
+    margin: 0 auto;
+}
+
+.filter-tab {
+    padding: 10px 20px;
+    background: transparent;
+    border: none;
+    color: var(--text-secondary);
+    font-size: 1rem;
+    cursor: pointer;
+    transition: var(--transition);
+    position: relative;
+    font-weight: 500;
+}
+
+.filter-tab::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: var(--primary-color);
+    transform: scaleX(0);
+    transition: transform 0.3s;
+}
+
+.filter-tab:hover,
+.filter-tab.active {
+    color: var(--text-primary);
+}
+
+.filter-tab.active::after {
+    transform: scaleX(1);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .mylist-grid {
+        grid-template-columns: repeat(3, 1fr);
+        gap: 15px;
+        padding: 25px 4%;
+    }
+    
+    .mylist-card .remove-btn {
+        opacity: 1;
+        transform: scale(1);
+        width: 30px;
+        height: 30px;
+        font-size: 0.9rem;
+    }
+    
+    .mylist-title {
+        font-size: 1.8rem;
+    }
+}
+
+@media (max-width: 480px) {
+    .mylist-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 12px;
+    }
+}

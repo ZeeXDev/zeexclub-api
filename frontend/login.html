@@ -1,53 +1,328 @@
-<!-- frontend/login.html -->
 <!DOCTYPE html>
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Connexion - ZeeXClub</title>
+    <meta name="description" content="Connectez-vous à ZeeXClub">
+    
+    <link rel="icon" type="image/x-icon" href="/img/favicon.ico">
     <link rel="stylesheet" href="css/main.css">
+    <link rel="stylesheet" href="css/responsive.css">
     <link rel="stylesheet" href="css/auth.css">
-    <link rel="stylesheet" href="css/bottom-nav.css">
-
+    
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <style>
+        .auth-page {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(rgba(0,0,0,0.5), rgba(0,0,0,0.5)), url('/img/background.png');
+            background-size: cover;
+            background-position: center;
+            padding: 20px;
+        }
+        
+        .auth-container {
+            width: 100%;
+            max-width: 450px;
+            background: rgba(0,0,0,0.75);
+            backdrop-filter: blur(10px);
+            padding: 60px 50px;
+            border-radius: var(--radius-lg);
+            box-shadow: var(--shadow-lg);
+        }
+        
+        .auth-logo {
+            text-align: center;
+            margin-bottom: 30px;
+            font-size: 2.5rem;
+            font-weight: 700;
+        }
+        
+        .auth-logo .logo-text {
+            color: var(--primary-color);
+        }
+        
+        .auth-title {
+            font-size: 1.8rem;
+            font-weight: 600;
+            margin-bottom: 10px;
+            text-align: center;
+        }
+        
+        .auth-subtitle {
+            color: var(--text-secondary);
+            text-align: center;
+            margin-bottom: 30px;
+            font-size: 0.95rem;
+        }
+        
+        .auth-form {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+        
+        .form-group {
+            position: relative;
+        }
+        
+        .form-group input {
+            width: 100%;
+            padding: 15px 20px;
+            background: var(--bg-dark);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-sm);
+            color: var(--text-primary);
+            font-size: 1rem;
+            transition: var(--transition);
+        }
+        
+        .form-group input:focus {
+            outline: none;
+            border-color: var(--text-secondary);
+            background: rgba(255,255,255,0.05);
+        }
+        
+        .form-group label {
+            position: absolute;
+            left: 20px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-secondary);
+            transition: var(--transition);
+            pointer-events: none;
+        }
+        
+        .form-group input:focus + label,
+        .form-group input:not(:placeholder-shown) + label {
+            top: 0;
+            font-size: 0.8rem;
+            background: rgba(0,0,0,0.75);
+            padding: 0 5px;
+        }
+        
+        .form-options {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.9rem;
+        }
+        
+        .remember-me {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: var(--text-secondary);
+            cursor: pointer;
+        }
+        
+        .remember-me input {
+            width: 18px;
+            height: 18px;
+            accent-color: var(--primary-color);
+        }
+        
+        .forgot-password {
+            color: var(--text-secondary);
+            transition: var(--transition);
+        }
+        
+        .forgot-password:hover {
+            color: var(--text-primary);
+            text-decoration: underline;
+        }
+        
+        .btn-auth {
+            width: 100%;
+            padding: 15px;
+            background: var(--primary-color);
+            color: white;
+            border: none;
+            border-radius: var(--radius-sm);
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: var(--transition);
+            margin-top: 10px;
+        }
+        
+        .btn-auth:hover {
+            background: var(--primary-hover);
+            transform: translateY(-2px);
+        }
+        
+        .auth-divider {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            margin: 25px 0;
+            color: var(--text-muted);
+            font-size: 0.9rem;
+        }
+        
+        .auth-divider::before,
+        .auth-divider::after {
+            content: '';
+            flex: 1;
+            height: 1px;
+            background: var(--border-color);
+        }
+        
+        .social-auth {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+        }
+        
+        .social-btn {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            background: var(--bg-dark);
+            border: 1px solid var(--border-color);
+            color: var(--text-primary);
+            font-size: 1.2rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: var(--transition);
+            cursor: pointer;
+        }
+        
+        .social-btn:hover {
+            background: var(--bg-hover);
+            transform: translateY(-3px);
+        }
+        
+        .auth-footer {
+            text-align: center;
+            margin-top: 30px;
+            color: var(--text-secondary);
+            font-size: 0.95rem;
+        }
+        
+        .auth-footer a {
+            color: var(--text-primary);
+            font-weight: 500;
+            text-decoration: underline;
+        }
+        
+        .auth-footer a:hover {
+            color: var(--primary-color);
+        }
+        
+        .back-home {
+            position: absolute;
+            top: 30px;
+            left: 30px;
+            color: var(--text-primary);
+            font-size: 1.2rem;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: var(--transition);
+        }
+        
+        .back-home:hover {
+            color: var(--primary-color);
+            transform: translateX(-5px);
+        }
+        
+        @media (max-width: 480px) {
+            .auth-container {
+                padding: 40px 25px;
+            }
+            
+            .auth-logo {
+                font-size: 2rem;
+            }
+            
+            .auth-title {
+                font-size: 1.5rem;
+            }
+        }
+    </style>
 </head>
-<body class="auth-page">
-    <div class="auth-container">
-        <div class="auth-box">
-            <a href="index.html" class="auth-logo">
-                <img src="/img/logo.png" alt="ZeeXClub">
-            </a>
+<body>
+    <div class="auth-page">
+        <a href="index.html" class="back-home">
+            <i class="fas fa-arrow-left"></i> Retour
+        </a>
+        
+        <div class="auth-container">
+            <div class="auth-logo">
+                <span class="logo-text">ZeeX</span><span class="logo-accent">Club</span>
+            </div>
             
-            <h1>Bienvenue sur ZeeXClub</h1>
-            <p>Connectez-vous pour accéder à votre liste et reprendre vos vidéos où vous vous êtes arrêtés.</p>
+            <h1 class="auth-title">Connexion</h1>
+            <p class="auth-subtitle">Accédez à votre compte pour profiter du contenu</p>
             
-            <button class="btn-google" onclick="signInWithGoogle()">
-                <svg viewBox="0 0 24 24">
-                    <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
-                    <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
-                    <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
-                    <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
-                </svg>
-                Continuer avec Google
-            </button>
+            <form class="auth-form" id="loginForm">
+                <div class="form-group">
+                    <input type="email" id="email" placeholder=" " required>
+                    <label for="email">Adresse email</label>
+                </div>
+                
+                <div class="form-group">
+                    <input type="password" id="password" placeholder=" " required>
+                    <label for="password">Mot de passe</label>
+                </div>
+                
+                <div class="form-options">
+                    <label class="remember-me">
+                        <input type="checkbox" checked>
+                        <span>Se souvenir de moi</span>
+                    </label>
+                    <a href="#" class="forgot-password">Mot de passe oublié ?</a>
+                </div>
+                
+                <button type="submit" class="btn-auth">
+                    <i class="fas fa-sign-in-alt"></i> Se connecter
+                </button>
+            </form>
+            
+            <div class="auth-divider">ou</div>
+            
+            <div class="social-auth">
+                <button class="social-btn" title="Google">
+                    <i class="fab fa-google"></i>
+                </button>
+                <button class="social-btn" title="Discord">
+                    <i class="fab fa-discord"></i>
+                </button>
+                <button class="social-btn" title="Telegram">
+                    <i class="fab fa-telegram"></i>
+                </button>
+            </div>
             
             <div class="auth-footer">
-                <p>En continuant, vous acceptez nos <a href="#">Conditions d'utilisation</a> et <a href="#">Politique de confidentialité</a>.</p>
+                Pas encore de compte ? <a href="register.html">S'inscrire</a>
             </div>
-        </div>
-        
-        <div class="auth-background">
-            <div class="gradient-overlay"></div>
         </div>
     </div>
 
-    <script type="module">
-        import { signInWithGoogle, handlePostLoginRedirect } from './js/auth.js';
-        
-        // Exposer pour le bouton onclick
-        window.signInWithGoogle = signInWithGoogle;
-        
-        // Vérifier si on revient d'une auth
-        handlePostLoginRedirect();
+    <script>
+        document.getElementById('loginForm').addEventListener('submit', (e) => {
+            e.preventDefault();
+            // Simulation connexion
+            const email = document.getElementById('email').value;
+            
+            // Stocker l'utilisateur (simulation)
+            localStorage.setItem('user', JSON.stringify({
+                email: email,
+                name: email.split('@')[0]
+            }));
+            
+            // Redirection
+            window.location.href = 'index.html';
+        });
     </script>
 </body>
 </html>

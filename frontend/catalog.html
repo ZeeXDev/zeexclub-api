@@ -4,593 +4,191 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Catalogue - ZeeXClub</title>
+    <meta name="description" content="Parcourez notre catalogue de films et séries en streaming HD">
+    
+    <link rel="icon" type="image/x-icon" href="/img/favicon.ico">
+    <link rel="stylesheet" href="css/main.css">
+    <link rel="stylesheet" href="css/responsive.css">
+    <link rel="stylesheet" href="css/catalog.css"
+    
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Bebas+Neue&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="css/main.css">
-    <link rel="stylesheet" href="css/catalog.css">
-    <link rel="stylesheet" href="css/bottom-nav.css">
-    <link rel="stylesheet" href="css/responsive.css">
-    <style>
-        /* Styles complémentaires pour le catalogue */
-        .catalog-page {
-            padding-top: 80px;
-            min-height: 100vh;
-            background: var(--background-black);
-        }
-        
-        .catalog-header {
-            max-width: 1400px;
-            margin: 0 auto;
-            padding: 2rem;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            flex-wrap: wrap;
-            gap: 1rem;
-        }
-        
-        .catalog-header h1 {
-            font-family: 'Bebas Neue', sans-serif;
-            font-size: 3rem;
-            color: white;
-        }
-        
-        .search-bar {
-            display: flex;
-            gap: 0.5rem;
-            flex: 1;
-            max-width: 500px;
-        }
-        
-        .search-bar input {
-            flex: 1;
-            padding: 0.75rem 1rem;
-            background: rgba(255,255,255,0.1);
-            border: 1px solid rgba(255,255,255,0.2);
-            border-radius: 8px;
-            color: white;
-            font-size: 1rem;
-        }
-        
-        .search-bar input::placeholder {
-            color: var(--light-gray);
-        }
-        
-        .search-bar button {
-            padding: 0.75rem 1.5rem;
-            background: var(--primary-red);
-            border: none;
-            border-radius: 8px;
-            color: white;
-            cursor: pointer;
-            transition: all 0.3s ease;
-        }
-        
-        .search-bar button:hover {
-            background: #ff4444;
-        }
-        
-        /* Filtres */
-        .filters-bar {
-            max-width: 1400px;
-            margin: 0 auto;
-            padding: 0 2rem 2rem;
-            display: flex;
-            gap: 1rem;
-            flex-wrap: wrap;
-            align-items: center;
-        }
-        
-        .filters-bar select {
-            padding: 0.625rem 1rem;
-            background: rgba(255,255,255,0.1);
-            border: 1px solid rgba(255,255,255,0.2);
-            border-radius: 8px;
-            color: white;
-            font-size: 0.9375rem;
-            cursor: pointer;
-            min-width: 150px;
-        }
-        
-        .filters-bar select option {
-            background: #1a1a1a;
-        }
-        
-        .btn-text {
-            padding: 0.625rem 1rem;
-            background: transparent;
-            border: 1px solid rgba(255,255,255,0.3);
-            border-radius: 8px;
-            color: var(--light-gray);
-            cursor: pointer;
-            transition: all 0.3s ease;
-        }
-        
-        .btn-text:hover {
-            border-color: var(--primary-red);
-            color: var(--primary-red);
-        }
-        
-        /* Résultats */
-        .results-info {
-            max-width: 1400px;
-            margin: 0 auto;
-            padding: 0 2rem 1.5rem;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-        
-        #results-count {
-            color: var(--light-gray);
-        }
-        
-        #results-count strong {
-            color: white;
-            font-size: 1.25rem;
-        }
-        
-        /* Grille de séries */
-        .catalog-grid {
-            max-width: 1400px;
-            margin: 0 auto;
-            padding: 0 2rem 4rem;
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-            gap: 1.5rem;
-        }
-        
-        /* Carte série */
-        .series-card {
-            background: rgba(255,255,255,0.05);
-            border-radius: 12px;
-            overflow: hidden;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            border: 1px solid rgba(255,255,255,0.1);
-        }
-        
-        .series-card:hover {
-            transform: translateY(-8px);
-            border-color: var(--primary-red);
-            box-shadow: 0 20px 40px rgba(0,0,0,0.4);
-        }
-        
-        .card-image {
-            position: relative;
-            aspect-ratio: 2/3;
-            overflow: hidden;
-        }
-        
-        .card-image img {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-            transition: transform 0.3s ease;
-        }
-        
-        .series-card:hover .card-image img {
-            transform: scale(1.05);
-        }
-        
-        .card-overlay {
-            position: absolute;
-            inset: 0;
-            background: rgba(0,0,0,0.7);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            opacity: 0;
-            transition: opacity 0.3s ease;
-        }
-        
-        .series-card:hover .card-overlay {
-            opacity: 1;
-        }
-        
-        .info-btn {
-            width: 50px;
-            height: 50px;
-            background: var(--primary-red);
-            border: none;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            cursor: pointer;
-            transition: transform 0.3s ease;
-        }
-        
-        .info-btn:hover {
-            transform: scale(1.1);
-        }
-        
-        .info-btn svg {
-            width: 24px;
-            height: 24px;
-            stroke: white;
-        }
-        
-        .series-badge, .movie-badge {
-            position: absolute;
-            top: 10px;
-            right: 10px;
-            padding: 0.375rem 0.75rem;
-            border-radius: 4px;
-            font-size: 0.75rem;
-            font-weight: 700;
-            text-transform: uppercase;
-        }
-        
-        .series-badge {
-            background: var(--primary-blue);
-            color: white;
-        }
-        
-        .movie-badge {
-            background: var(--primary-red);
-            color: white;
-        }
-        
-        .card-content {
-            padding: 1rem;
-        }
-        
-        .card-title {
-            font-size: 1rem;
-            font-weight: 600;
-            margin-bottom: 0.5rem;
-            color: white;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-        
-        .card-meta {
-            display: flex;
-            gap: 0.75rem;
-            color: var(--light-gray);
-            font-size: 0.875rem;
-            margin-bottom: 0.5rem;
-        }
-        
-        .card-rating {
-            color: #FFD700;
-        }
-        
-        .card-genres {
-            font-size: 0.8125rem;
-            color: var(--lighter-gray);
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-        
-        /* Empty state */
-        .empty-catalog {
-            grid-column: 1 / -1;
-            text-align: center;
-            padding: 4rem 2rem;
-            color: var(--light-gray);
-        }
-        
-        .empty-catalog svg {
-            width: 64px;
-            height: 64px;
-            margin-bottom: 1rem;
-            opacity: 0.5;
-        }
-        
-        .empty-catalog h3 {
-            font-size: 1.5rem;
-            margin-bottom: 0.5rem;
-            color: white;
-        }
-        
-        /* Pagination */
-        .pagination {
-            max-width: 1400px;
-            margin: 0 auto;
-            padding: 0 2rem 4rem;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            gap: 1rem;
-        }
-        
-        .page-btn {
-            width: 44px;
-            height: 44px;
-            background: rgba(255,255,255,0.1);
-            border: 1px solid rgba(255,255,255,0.2);
-            border-radius: 8px;
-            color: white;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            cursor: pointer;
-            transition: all 0.3s ease;
-        }
-        
-        .page-btn:hover:not(:disabled) {
-            background: var(--primary-red);
-            border-color: var(--primary-red);
-        }
-        
-        .page-btn:disabled {
-            opacity: 0.3;
-            cursor: not-allowed;
-        }
-        
-        .page-btn svg {
-            width: 20px;
-            height: 20px;
-        }
-        
-        #pageInfo {
-            color: var(--light-gray);
-            font-size: 0.9375rem;
-        }
-        
-        /* Responsive */
-        @media (max-width: 768px) {
-            .catalog-header {
-                flex-direction: column;
-                align-items: stretch;
-            }
-            
-            .catalog-header h1 {
-                font-size: 2rem;
-            }
-            
-            .search-bar {
-                max-width: none;
-            }
-            
-            .filters-bar {
-                flex-direction: column;
-                align-items: stretch;
-            }
-            
-            .filters-bar select {
-                width: 100%;
-            }
-            
-            .catalog-grid {
-                grid-template-columns: repeat(2, 1fr);
-                gap: 1rem;
-                padding: 0 1rem 2rem;
-            }
-        }
-    </style>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
-<body class="catalog-page">
-    <!-- Header -->
-    <header class="main-header" id="main-header">
-        <div class="header-backdrop"></div>
-        <div class="header-content">
-            <a href="index.html" class="logo-link">
-                <div class="logo-container">
-                    <svg class="logo-svg" viewBox="0 0 200 50" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <text x="0" y="40" fill="#E31E24" font-family="Bebas Neue" font-size="48" font-weight="bold">ZEEX</text>
-                        <text x="95" y="40" fill="#00A7E1" font-family="Bebas Neue" font-size="48" font-weight="bold">CLUB</text>
-                    </svg>
-                </div>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar">
+        <div class="nav-container">
+            <a href="index.html" class="nav-logo">
+                <span class="logo-text">ZeeX</span><span class="logo-accent">Club</span>
             </a>
             
-            <nav class="primary-nav">
-                <ul class="nav-list">
-                    <li class="nav-item">
-                        <a href="index.html" class="nav-link">
-                            <span class="nav-text">Accueil</span>
-                            <span class="nav-hover">Accueil</span>
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a href="catalog.html" class="nav-link active">
-                            <span class="nav-text">Catalogue</span>
-                            <span class="nav-hover">Catalogue</span>
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a href="trending.html" class="nav-link">
-                            <span class="nav-text">Tendances</span>
-                            <span class="nav-hover">Tendances</span>
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a href="mylist.html" class="nav-link">
-                            <span class="nav-text">Ma Liste</span>
-                            <span class="nav-hover">Ma Liste</span>
-                        </a>
-                    </li>
-                </ul>
-            </nav>
+            <div class="nav-links" id="navLinks">
+                <a href="index.html" class="nav-link">Accueil</a>
+                <a href="catalog.html?type=movie" class="nav-link">Films</a>
+                <a href="catalog.html?type=series" class="nav-link">Séries</a>
+                <a href="catalog.html" class="nav-link active">Catalogue</a>
+                <a href="mylist.html" class="nav-link">Ma Liste</a>
+            </div>
             
-            <div class="header-actions">
-                <a href="search.html" class="btn-search" style="display: flex; align-items: center; gap: 0.5rem; color: white; text-decoration: none; padding: 0.5rem 1rem; background: rgba(255,255,255,0.1); border-radius: 8px;">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <circle cx="11" cy="11" r="8"></circle>
-                        <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-                    </svg>
-                    Recherche
+            <div class="nav-actions">
+                <div class="search-box">
+                    <input type="text" id="searchInput" placeholder="Rechercher...">
+                    <button id="searchBtn"><i class="fas fa-search"></i></button>
+                </div>
+                <a href="profile.html" class="profile-btn">
+                    <i class="fas fa-user"></i>
                 </a>
+                <button class="mobile-menu-btn" id="mobileMenuBtn">
+                    <i class="fas fa-bars"></i>
+                </button>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Header Catalogue -->
+    <header class="catalog-header">
+        <div class="catalog-header-content">
+            <h1 class="catalog-title">Catalogue</h1>
+            
+            <div class="catalog-filters">
+                <div class="filter-dropdown">
+                    <button class="filter-btn" id="typeFilterBtn">
+                        <i class="fas fa-filter"></i> Type <i class="fas fa-chevron-down"></i>
+                    </button>
+                    <div class="filter-menu">
+                        <a href="catalog.html">Tous</a>
+                        <a href="catalog.html?type=movie">Films</a>
+                        <a href="catalog.html?type=series">Séries</a>
+                    </div>
+                </div>
+
+                <div class="filter-dropdown">
+                    <button class="filter-btn">
+                        <i class="fas fa-list"></i> Genres <i class="fas fa-chevron-down"></i>
+                    </button>
+                    <div class="filter-menu" id="genreMenu">
+                        <a href="#" data-genre="action">Action</a>
+                        <a href="#" data-genre="aventure">Aventure</a>
+                        <a href="#" data-genre="animation">Animation</a>
+                        <a href="#" data-genre="comedie">Comédie</a>
+                        <a href="#" data-genre="crime">Crime</a>
+                        <a href="#" data-genre="documentaire">Documentaire</a>
+                        <a href="#" data-genre="drame">Drame</a>
+                        <a href="#" data-genre="famille">Famille</a>
+                        <a href="#" data-genre="fantastique">Fantastique</a>
+                        <a href="#" data-genre="horreur">Horreur</a>
+                        <a href="#" data-genre="romance">Romance</a>
+                        <a href="#" data-genre="science-fiction">Science-Fiction</a>
+                        <a href="#" data-genre="thriller">Thriller</a>
+                    </div>
+                </div>
+
+                <div class="filter-dropdown">
+                    <button class="filter-btn">
+                        <i class="fas fa-calendar"></i> Année <i class="fas fa-chevron-down"></i>
+                    </button>
+                    <div class="filter-menu">
+                        <a href="#" data-year="2024">2024</a>
+                        <a href="#" data-year="2023">2023</a>
+                        <a href="#" data-year="2022">2022</a>
+                        <a href="#" data-year="2021">2021</a>
+                        <a href="#" data-year="2020">2020</a>
+                        <a href="#" data-year="2019">2019</a>
+                        <a href="#" data-year="2010s">Années 2010</a>
+                        <a href="#" data-year="2000s">Années 2000</a>
+                        <a href="#" data-year="classic">Classiques</a>
+                    </div>
+                </div>
+
+                <div class="filter-dropdown">
+                    <button class="filter-btn">
+                        <i class="fas fa-sort"></i> Trier par <i class="fas fa-chevron-down"></i>
+                    </button>
+                    <div class="filter-menu">
+                        <a href="#" data-sort="newest">Plus récent</a>
+                        <a href="#" data-sort="oldest">Plus ancien</a>
+                        <a href="#" data-sort="rating">Meilleure note</a>
+                        <a href="#" data-sort="views">Plus populaire</a>
+                        <a href="#" data-sort="az">A-Z</a>
+                        <a href="#" data-sort="za">Z-A</a>
+                    </div>
+                </div>
             </div>
         </div>
     </header>
 
-    <!-- Main Content -->
-    <main>
-        <!-- Header Catalogue -->
-        <div class="catalog-header">
-            <h1>Catalogue</h1>
-            <div class="search-bar">
-                <input type="text" id="catalogSearch" placeholder="Rechercher un film, une série..." autocomplete="off">
-                <button id="catalogSearchBtn" aria-label="Rechercher">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <circle cx="11" cy="11" r="8"></circle>
-                        <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-                    </svg>
-                </button>
-            </div>
-        </div>
-        
-        <!-- Filtres -->
-        <div class="filters-bar">
-            <select id="filterType">
-                <option value="">Tous les types</option>
-                <option value="movie">Films</option>
-                <option value="tv">Séries</option>
-            </select>
-            
-            <select id="filterGenre">
-                <option value="">Tous les genres</option>
-                <option value="action">Action</option>
-                <option value="adventure">Aventure</option>
-                <option value="animation">Animation</option>
-                <option value="comedy">Comédie</option>
-                <option value="crime">Crime</option>
-                <option value="documentary">Documentaire</option>
-                <option value="drama">Drame</option>
-                <option value="family">Famille</option>
-                <option value="fantasy">Fantastique</option>
-                <option value="history">Histoire</option>
-                <option value="horror">Horreur</option>
-                <option value="music">Musique</option>
-                <option value="mystery">Mystère</option>
-                <option value="romance">Romance</option>
-                <option value="science-fiction">Science-Fiction</option>
-                <option value="thriller">Thriller</option>
-                <option value="war">Guerre</option>
-                <option value="western">Western</option>
-            </select>
-            
-            <select id="filterYear">
-                <option value="">Toutes les années</option>
-                <option value="2026">2026</option>
-                <option value="2025">2025</option>
-                <option value="2024">2024</option>
-                <option value="2023">2023</option>
-                <option value="2022">2022</option>
-                <option value="2021">2021</option>
-                <option value="2020">2020</option>
-                <option value="2019">2019</option>
-            </select>
-            
-            <select id="filterSort">
-                <option value="newest">Plus récent</option>
-                <option value="oldest">Plus ancien</option>
-                <option value="rating">Meilleure note</option>
-                <option value="popularity">Popularité</option>
-            </select>
-            
-            <button class="btn-text" id="resetFilters">Réinitialiser</button>
-        </div>
-        
-        <!-- Info résultats -->
-        <div class="results-info">
-            <p id="results-count"><strong id="results-total">0</strong> résultats trouvés</p>
-        </div>
-        
-        <!-- Grille de résultats -->
-        <div class="catalog-grid" id="catalog-grid">
-            <!-- Skeleton loading -->
-            <div class="series-card" style="opacity: 0.5;">
-                <div class="card-image" style="background: rgba(255,255,255,0.1);"></div>
-                <div class="card-content">
-                    <div style="height: 20px; background: rgba(255,255,255,0.1); border-radius: 4px; margin-bottom: 8px;"></div>
-                    <div style="height: 16px; background: rgba(255,255,255,0.05); border-radius: 4px; width: 60%;"></div>
-                </div>
-            </div>
-            <div class="series-card" style="opacity: 0.5;">
-                <div class="card-image" style="background: rgba(255,255,255,0.1);"></div>
-                <div class="card-content">
-                    <div style="height: 20px; background: rgba(255,255,255,0.1); border-radius: 4px; margin-bottom: 8px;"></div>
-                    <div style="height: 16px; background: rgba(255,255,255,0.05); border-radius: 4px; width: 60%;"></div>
-                </div>
-            </div>
-            <div class="series-card" style="opacity: 0.5;">
-                <div class="card-image" style="background: rgba(255,255,255,0.1);"></div>
-                <div class="card-content">
-                    <div style="height: 20px; background: rgba(255,255,255,0.1); border-radius: 4px; margin-bottom: 8px;"></div>
-                    <div style="height: 16px; background: rgba(255,255,255,0.05); border-radius: 4px; width: 60%;"></div>
-                </div>
-            </div>
-            <div class="series-card" style="opacity: 0.5;">
-                <div class="card-image" style="background: rgba(255,255,255,0.1);"></div>
-                <div class="card-content">
-                    <div style="height: 20px; background: rgba(255,255,255,0.1); border-radius: 4px; margin-bottom: 8px;"></div>
-                    <div style="height: 16px; background: rgba(255,255,255,0.05); border-radius: 4px; width: 60%;"></div>
-                </div>
-            </div>
-        </div>
-        
-        <!-- Pagination -->
-        <div class="pagination" id="pagination">
-            <button class="page-btn" id="prevPage" disabled>
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <polyline points="15 18 9 12 15 6"></polyline>
-                </svg>
-            </button>
-            <span id="pageInfo">Page 1</span>
-            <button class="page-btn" id="nextPage">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <polyline points="9 18 15 12 9 6"></polyline>
-                </svg>
-            </button>
-        </div>
+    <!-- Grille de contenu -->
+    <main class="catalog-grid" id="catalogGrid">
+        <!-- Les éléments seront injectés par JavaScript -->
+        <div class="skeleton" style="aspect-ratio: 2/3;"></div>
+        <div class="skeleton" style="aspect-ratio: 2/3;"></div>
+        <div class="skeleton" style="aspect-ratio: 2/3;"></div>
+        <div class="skeleton" style="aspect-ratio: 2/3;"></div>
+        <div class="skeleton" style="aspect-ratio: 2/3;"></div>
+        <div class="skeleton" style="aspect-ratio: 2/3;"></div>
     </main>
 
-    <!-- Bottom Navigation Mobile -->
-    <nav class="bottom-nav">
-        <div class="bottom-nav-container">
-            <a href="index.html" class="bottom-nav-item">
-                <svg class="bottom-nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
-                    <polyline points="9 22 9 12 15 12 15 22"></polyline>
-                </svg>
-                <span class="bottom-nav-label">Accueil</span>
-            </a>
-            <a href="catalog.html" class="bottom-nav-item active">
-                <svg class="bottom-nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect>
-                    <line x1="8" y1="21" x2="16" y2="21"></line>
-                    <line x1="12" y1="17" x2="12" y2="21"></line>
-                </svg>
-                <span class="bottom-nav-label">Catalogue</span>
-            </a>
-            <a href="search.html" class="bottom-nav-item">
-                <svg class="bottom-nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <circle cx="11" cy="11" r="8"></circle>
-                    <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-                </svg>
-                <span class="bottom-nav-label">Recherche</span>
-            </a>
-            <a href="mylist.html" class="bottom-nav-item">
-                <svg class="bottom-nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
-                </svg>
-                <span class="bottom-nav-label">Ma Liste</span>
-            </a>
-            <a href="profile.html" class="bottom-nav-item">
-                <svg class="bottom-nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
-                    <circle cx="12" cy="7" r="4"></circle>
-                </svg>
-                <span class="bottom-nav-label">Profil</span>
-            </a>
+    <!-- Pagination -->
+    <div class="pagination" id="pagination">
+        <!-- Injectée par JavaScript -->
+    </div>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="footer-content">
+            <div class="footer-section">
+                <h3 class="footer-title">ZeeXClub</h3>
+                <p>Votre plateforme de streaming préférée. Films et séries en HD.</p>
+                <div class="social-links">
+                    <a href="#"><i class="fab fa-twitter"></i></a>
+                    <a href="#"><i class="fab fa-instagram"></i></a>
+                    <a href="#"><i class="fab fa-discord"></i></a>
+                </div>
+            </div>
+            <div class="footer-section">
+                <h4>Navigation</h4>
+                <ul>
+                    <li><a href="index.html">Accueil</a></li>
+                    <li><a href="catalog.html">Catalogue</a></li>
+                    <li><a href="catalog.html?type=movie">Films</a></li>
+                    <li><a href="catalog.html?type=series">Séries</a></li>
+                </ul>
+            </div>
+            <div class="footer-section">
+                <h4>Mon compte</h4>
+                <ul>
+                    <li><a href="profile.html">Profil</a></li>
+                    <li><a href="mylist.html">Ma Liste</a></li>
+                    <li><a href="#">Paramètres</a></li>
+                </ul>
+            </div>
+            <div class="footer-section">
+                <h4>Légal</h4>
+                <ul>
+                    <li><a href="#">Mentions légales</a></li>
+                    <li><a href="#">Confidentialité</a></li>
+                    <li><a href="#">CGU</a></li>
+                </ul>
+            </div>
         </div>
-    </nav>
+        <div class="footer-bottom">
+            <p>&copy; 2024 ZeeXClub. Tous droits réservés.</p>
+        </div>
+    </footer>
+
+    <!-- Loading Overlay -->
+    <div class="loading-overlay" id="loadingOverlay">
+        <div class="spinner"></div>
+    </div>
 
     <!-- Toast Container -->
     <div class="toast-container" id="toastContainer"></div>
 
     <!-- Scripts -->
     <script type="module" src="js/config.js"></script>
-    <script type="module" src="js/supabase-client.js"></script>
     <script type="module" src="js/api.js"></script>
-    <script type="module" src="js/utils.js"></script>
     <script type="module" src="js/catalog.js"></script>
 </body>
 </html>

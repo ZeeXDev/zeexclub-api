@@ -1,1239 +1,200 @@
-<!-- frontend/trending.html -->
 <!DOCTYPE html>
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Tendances - ZeeXClub</title>
-    <meta name="description" content="Découvrez les films et séries les plus populaires sur ZeeXClub. Top 10, tendances actuelles et contenus viral.">
-    <meta name="theme-color" content="#0A0A0A">
+    <meta name="description" content="Les films et séries les plus populaires du moment">
     
-    <!-- Open Graph -->
-    <meta property="og:title" content="Tendances - ZeeXClub">
-    <meta property="og:description" content="Les contenus les plus populaires du moment">
-    <meta property="og:type" content="website">
+    <link rel="icon" type="image/x-icon" href="/img/favicon.ico">
+    <link rel="stylesheet" href="css/main.css">
+    <link rel="stylesheet" href="css/responsive.css">
+    <link rel="stylesheet" href="css/trending.css">
     
-    <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Bebas+Neue&display=swap" rel="stylesheet">
-    
-    <!-- CSS -->
-    <link rel="stylesheet" href="css/main.css">
-    <link rel="stylesheet" href="css/catalog.css">
-    <link rel="stylesheet" href="css/responsive.css">
-    <link rel="stylesheet" href="css/bottom-nav.css">
-
-    
-    <style>
-        /* Styles spécifiques trending */
-        .trending-hero {
-            position: relative;
-            padding: 120px 2rem 3rem;
-            background: linear-gradient(180deg, rgba(227,30,36,0.1) 0%, transparent 100%);
-            overflow: hidden;
-        }
-        
-        .trending-hero::before {
-            content: '';
-            position: absolute;
-            top: -50%;
-            right: -20%;
-            width: 600px;
-            height: 600px;
-            background: radial-gradient(circle, rgba(227,30,36,0.15) 0%, transparent 70%);
-            animation: pulse-glow 4s ease-in-out infinite;
-        }
-        
-        @keyframes pulse-glow {
-            0%, 100% { transform: scale(1); opacity: 0.5; }
-            50% { transform: scale(1.1); opacity: 0.8; }
-        }
-        
-        .trending-hero-content {
-            max-width: 1400px;
-            margin: 0 auto;
-            position: relative;
-            z-index: 1;
-        }
-        
-        .trending-badge {
-            display: inline-flex;
-            align-items: center;
-            gap: 0.5rem;
-            background: var(--gradient-primary);
-            color: white;
-            padding: 0.5rem 1rem;
-            border-radius: 20px;
-            font-size: 0.75rem;
-            font-weight: 700;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            margin-bottom: 1rem;
-            animation: fire-pulse 2s ease-in-out infinite;
-            box-shadow: 0 4px 20px rgba(227,30,36,0.4);
-        }
-        
-        @keyframes fire-pulse {
-            0%, 100% { box-shadow: 0 4px 20px rgba(227,30,36,0.4); }
-            50% { box-shadow: 0 4px 30px rgba(255,100,0,0.6); }
-        }
-        
-        .trending-hero h1 {
-            font-size: 3.5rem;
-            font-weight: 800;
-            margin-bottom: 1rem;
-            background: linear-gradient(135deg, #fff 0%, #ff6b6b 50%, #00A7E1 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-            text-transform: uppercase;
-            letter-spacing: 2px;
-        }
-        
-        .trending-hero p {
-            font-size: 1.125rem;
-            color: var(--light-gray);
-            max-width: 600px;
-            line-height: 1.7;
-        }
-        
-        /* Top 10 Section */
-        .top-10-section {
-            max-width: 1400px;
-            margin: 0 auto;
-            padding: 2rem;
-        }
-        
-        .top-10-header {
-            display: flex;
-            align-items: center;
-            gap: 1rem;
-            margin-bottom: 2rem;
-        }
-        
-        .top-10-icon {
-            width: 60px;
-            height: 60px;
-            background: linear-gradient(135deg, #FFD700, #FFA500);
-            border-radius: 16px;
-            display: flex;
-            align           -items: center;
-            justify-content: center;
-            font-size: 1.75rem;
-            box-shadow: 0 10px 30px rgba(255,215,0,0.3);
-            animation: trophy-shine 3s ease-in-out infinite;
-        }
-        
-        @keyframes trophy-shine {
-            0%, 100% { filter: brightness(1); }
-            50% { filter: brightness(1.2); }
-        }
-        
-        .top-10-title {
-            font-size height: 600px;
-            background: radial-gradient(circle, rgba(227,30,36,0.15) 0%, transparent 70%);
-            animation: pulse-glow 4s ease-in-out infinite;
-        }
-        
-        @keyframes pulse-glow {
-            0%, 100% { transform: scale(1); opacity: 0.5; }
-            50% { transform: scale(1.1); opacity: 0.8; }
-        }
-        
-        .trending-hero-content {
-            max-width: 1400px;
-            margin: 0 auto;
-            position: relative;
-            z-index: 1;
-        }
-        
-        .trending-badge {
-            display: inline-flex;
-            align-items: center;
-            gap: 0.5rem;
-            background: var(--gradient-primary);
-            color: white;
-            padding: 0.5rem 1rem;
-            border-radius: 20px;
-            font-size: 0.75rem;
-            font-weight: 700;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            margin-bottom: 1rem;
-            animation: fire-pulse 2s ease-in-out infinite;
-            box-shadow: 0 4px 20px rgba(227,30,36,0.4);
-        }
-        
-        @keyframes fire-pulse {
-            0%, 100% { box-shadow: 0 4px 20px rgba(227,30,36,0.4); }
-            50% { box-shadow: 0 4px 30px rgba(255,100,0,0.6); }
-        }
-        
-        .trending-hero h1 {
-            font-size: 3.5rem;
-            font-weight: 800;
-            margin-bottom: 1rem;
-            background: linear-gradient(135deg, #fff 0%, #ff6b6b 50%, #00A7E1 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-            text-transform: uppercase;
-            letter-spacing: 2px;
-        }
-        
-        .trending-hero p {
-            font-size: 1.125rem;
-            color: var(--light-gray);
-            max-width: 600px;
-            line-height: 1.7;
-        }
-        
-        /* Top 10 Section */
-        .top-10-section {
-            max-width: 1400px;
-            margin: 0 auto;
-            padding: 2rem;
-        }
-        
-        .top-10-header {
-            display: flex;
-            align-items: center;
-            gap: 1rem;
-            margin-bottom: 2rem;
-        }
-        
-        .top-10-icon {
-            width: 60px;
-            height: 60px;
-            background: linear-gradient(135deg, #FFD700, #FFA500);
-            border-radius: 16px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 1.75rem;
-            box-shadow: 0 10px 30px rgba(255,215,0,0.3);
-            animation: trophy-shine 3s ease-in-out infinite;
-        }
-        
-        @keyframes trophy-shine {
-            0%, 100% { filter: brightness(1); }
-            50% { filter: brightness(1.2); }
-        }
-        
-        .top-10-title {
-            font-size: 1.75rem;
-            font-weight: 700;
-        }
-        
-        .top-10-title span {
-            color: #FFD700;
-        }
-        
-        .top-10-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-            gap: 1.5rem;
-        }
-        
-        .top-item {
-            display: flex;
-            align-items: center;
-            gap: 1.25rem;
-            background: rgba(255,255,255,0.03);
-            border: 1px solid rgba(255,255,255,0.05);
-            border-radius: 16px;
-            padding: 1rem;
-            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-            cursor: pointer;
-            position: relative;
-            overflow: hidden;
-        }
-        
-        .top-item::before {
-            content: '';
-            position: absolute;
-            inset: 0;
-            background: var(--gradient-primary);
-            opacity: 0;
-            transition: opacity 0.3s ease;
-        }
-        
-        .top-item:hover {
-            transform: translateX(10px);
-            border-color: rgba(227,30,36,0.3);
-        }
-        
-        .top-item:hover::before {
-            opacity: 0.05;
-        }
-        
-        .top-rank {
-            font-family: 'Bebas Neue', sans-serif;
-            font-size: 4rem;
-            font-weight: 400;
-            line-height: 1;
-            color: transparent;
-            -webkit-text-stroke: 2px var(--medium-gray);
-            transition: all 0.3s ease;
-            position: relative;
-            z-index: 1;
-        }
-        
-        .top-item:hover .top-rank {
-            -webkit-text-stroke-color: var(--primary-red);
-            text-shadow: 0 0 30px rgba(227,30,36,0.5);
-        }
-        
-        .top-rank.top-3 {
-            -webkit-text-stroke-color: #FFD700;
-        }
-        
-        .top-item:hover .top-rank.top-3 {
-            text-shadow: 0 0 30px rgba(255,215,0,0.5);
-        }
-        
-        .top-poster {
-            width: 80px;
-            height: 120px;
-            border-radius: 12px;
-            overflow: hidden;
-            flex-shrink: 0;
-            position: relative;
-            z-index: 1;
-            box-shadow: 0 8px 20px rgba(0,0,0,0.3);
-        }
-        
-        .top-poster img {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-            transition: transform 0.3s ease;
-        }
-        
-        .top-item:hover .top-poster img {
-            transform: scale(1.1);
-        }
-        
-        .top-info {
-            flex: 1;
-            min-width: 0;
-            position: relative;
-            z-index: 1;
-        }
-        
-        .top-info h3 {
-            font-size: 1.0625rem;
-            font-weight: 700;
-            margin-bottom: 0.375rem;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            transition: color 0.3s ease;
-        }
-        
-        .top-item:hover .top-info h3 {
-            background: var(--gradient-primary);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-        }
-        
-        .top-meta {
-            display: flex;
-            align-items: center;
-            gap: 0.75rem;
-            font-size: 0.8125rem;
-            color: var(--light-gray);
-            margin-bottom: 0.5rem;
-        }
-        
-        .top-views {
-            display: flex;
-            align-items: center;
-            gap: 0.25rem;
-            color: var(--primary-red);
-            font-weight: 600;
-        }
-        
-        .top-trend {
-            display: inline-flex;
-            align-items: center;
-            gap: 0.25rem;
-            font-size: 0.75rem;
-            padding: 0.25rem 0.5rem;
-            border-radius: 4px;
-            font-weight: 600;
-        }
-        
-        .top-trend.up {
-            background: rgba(16, 185, 129, 0.15);
-            color: #10B981;
-        }
-        
-        .top-trend.down {
-            background: rgba(239, 68, 68, 0.15);
-            color: #EF4444;
-        }
-        
-        .top-trend.new {
-            background: rgba(227, 30, 36, 0.15);
-            color: var(--primary-red);
-        }
-        
-        /* Trending Categories */
-        .trending-categories {
-            max-width: 1400px;
-            margin: 0 auto;
-            padding: 3rem 2rem;
-        }
-        
-        .category-tabs {
-            display: flex;
-            gap: 0.75rem;
-            margin-bottom: 2rem;
-            flex-wrap: wrap;
-        }
-        
-        .category-tab {
-            padding: 0.75rem 1.5rem;
-            background: rgba(255,255,255,0.05);
-            border: 1px solid rgba(255,255,255,0.1);
-            border-radius: 30px;
-            color: var(--light-gray);
-            font-size: 0.9375rem;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-        }
-        
-        .category-tab:hover {
-            background: rgba(255,255,255,0.1);
-            color: var(--white-splash);
-            transform: translateY(-2px);
-        }
-        
-        .category-tab.active {
-            background: var(--gradient-primary);
-            border-color: transparent;
-            color: white;
-            box-shadow: 0 4px 20px rgba(227,30,36,0.4);
-        }
-        
-        .category-tab svg {
-            width: 18px;
-            height: 18px;
-        }
-        
-        /* Viral Section */
-        .viral-section {
-            max-width: 1400px;
-            margin: 0 auto;
-            padding: 0 2rem 4rem;
-        }
-        
-        .viral-header {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            margin-bottom: 1.5rem;
-        }
-        
-        .viral-title {
-            display: flex;
-            align-items: center;
-            gap: 0.75rem;
-            font-size: 1.5rem;
-            font-weight: 700;
-        }
-        
-        .viral-badge {
-            background: #EF4444;
-            color: white;
-            padding: 0.25rem 0.75rem;
-            border-radius: 20px;
-            font-size: 0.625rem;
-            font-weight: 800;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            animation: viral-pulse 1.5s ease-in-out infinite;
-        }
-        
-        @keyframes viral-pulse {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.7; }
-        }
-        
-        .viral-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
-            gap: 1.5rem;
-        }
-        
-        .viral-card {
-            position: relative;
-            border-radius: 16px;
-            overflow: hidden;
-            aspect-ratio: 16/9;
-            cursor: pointer;
-            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-        }
-        
-        .viral-card:hover {
-            transform: translateY(-8px) scale(1.02);
-            box-shadow: 0 20px 40px rgba(0,0,0,0.4);
-        }
-        
-        .viral-card img {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-            transition: transform 0.4s ease;
-        }
-        
-        .viral-card:hover img {
-            transform: scale(1.1);
-        }
-        
-        .viral-overlay {
-            position: absolute;
-            inset: 0;
-            background: linear-gradient(180deg, transparent 0%, rgba(0,0,0,0.9) 100%);
-            display: flex;
-            flex-direction: column;
-            justify-content: flex-end;
-            padding: 1.25rem;
-        }
-        
-        .viral-rank {
-            position: absolute;
-            top: 1rem;
-            left: 1rem;
-            font-family: 'Bebas Neue', sans-serif;
-            font-size: 3rem;
-            color: rgba(255,255,255,0.3);
-            line-height: 1;
-        }
-        
-        .viral-info h4 {
-            font-size: 1.125rem;
-            font-weight: 700;
-            margin-bottom: 0.375rem;
-        }
-        
-        .viral-stats {
-            display: flex;
-            gap: 1rem;
-            font-size: 0.8125rem;
-            color: var(--light-gray);
-        }
-        
-        .viral-stats span {
-            display: flex;
-            align-items: center;
-            gap: 0.25rem;
-        }
-        
-        /* Stats Bar */
-        .trending-stats {
-            max-width: 1400px;
-            margin: 0 auto;
-            padding: 2rem;
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 1.5rem;
-        }
-        
-        .stat-card {
-            background: rgba(255,255,255,0.03);
-            border: 1px solid rgba(255,255,255,0.05);
-            border-radius: 16px;
-            padding: 1.5rem;
-            text-align: center;
-            transition: all 0.3s ease;
-        }
-        
-        .stat-card:hover {
-            background: rgba(255,255,255,0.06);
-            transform: translateY(-5px);
-        }
-        
-        .stat-icon {
-            width: 48px;
-            height: 48px;
-            margin: 0 auto 1rem;
-            background: rgba(227,30,36,0.1);
-            border-radius: 12px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: var(--primary-red);
-        }
-        
-        .stat-value {
-            font-size: 2rem;
-            font-weight: 800;
-            color: var(--white-splash);
-            margin-bottom: 0.25rem;
-        }
-        
-        .stat-label {
-            font-size: 0.875rem;
-            color: var(--light-gray);
-        }
-        
-        /* Responsive */
-        @media (max-width: 768px) {
-            .trending-hero {
-                padding: 100px 1rem 2rem;
-            }
-            
-            .trending-hero h1 {
-                font-size: 2rem;
-            }
-            
-            .top-10-grid {
-                grid-template-columns: 1fr;
-            }
-            
-            .viral-grid {
-                grid-template-columns: 1fr;
-            }
-            
-            .category-tabs {
-                overflow-x: auto;
-                flex-wrap: nowrap;
-                padding-bottom: 0.5rem;
-            }
-            
-            .category-tab {
-                flex-shrink: 0;
-            }
-        }
-    </style>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
 <body>
-    <!-- Header -->
-    <header class="main-header" id="main-header">
-        <div class="header-backdrop"></div>
-        <div class="header-content">
-            <a href="index.html" class="logo-link">
-                <div class="logo-container">
-                    <img src="/img/logo.png" alt="ZeeXClub" class="logo-img" style="height: 40px; width: auto;">
-                </div>
+    <!-- Navigation -->
+    <nav class="navbar">
+        <div class="nav-container">
+            <a href="index.html" class="nav-logo">
+                <span class="logo-text">ZeeX</span><span class="logo-accent">Club</span>
             </a>
-
-            <nav class="primary-nav">
-                <ul class="nav-list">
-                    <li class="nav-item">
-                        <a href="index.html" class="nav-link">
-                            <span class="nav-text">Accueil</span>
-                            <span class="nav-hover">Accueil</span>
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a href="catalog.html" class="nav-link">
-                            <span class="nav-text">Catalogue</span>
-                            <span class="nav-hover">Catalogue</span>
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a href="trending.html" class="nav-link active">
-                            <span class="nav-text">Tendances</span>
-                            <span class="nav-hover">Tendances</span>
-                            <span class="trending-badge">HOT</span>
-                        </a>
-                    </li>
-                    <li class="nav-item" data-auth style="display:none;">
-                        <a href="mylist.html" class="nav-link">
-                            <span class="nav-text">Ma Liste</span>
-                            <span class="nav-hover">Ma Liste</span>
-                        </a>
-                    </li>
-                </ul>
-            </nav>
-
-            <div class="header-actions">
-                <div class="search-wrapper">
-                    <button class="search-toggle" id="search-toggle">
-                        <svg class="icon" viewBox="0 0 24 24">
-                            <circle cx="11" cy="11" r="8" stroke="currentColor" stroke-width="2" fill="none"/>
-                            <path d="M21 21l-4.35-4.35" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-                        </svg>
-                    </button>
+            
+            <div class="nav-links" id="navLinks">
+                <a href="index.html" class="nav-link">Accueil</a>
+                <a href="catalog.html?type=movie" class="nav-link">Films</a>
+                <a href="catalog.html?type=series" class="nav-link">Séries</a>
+                <a href="catalog.html" class="nav-link">Catalogue</a>
+                <a href="mylist.html" class="nav-link">Ma Liste</a>
+            </div>
+            
+            <div class="nav-actions">
+                <div class="search-box">
+                    <input type="text" id="searchInput" placeholder="Rechercher...">
+                    <button id="searchBtn"><i class="fas fa-search"></i></button>
                 </div>
-                
-                <a href="login.html" class="btn-login-header" data-no-auth>
-                    <span class="btn-text">Connexion</span>
+                <a href="profile.html" class="profile-btn">
+                    <i class="fas fa-user"></i>
                 </a>
+                <button class="mobile-menu-btn" id="mobileMenuBtn">
+                    <i class="fas fa-bars"></i>
+                </button>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Header -->
+    <header class="catalog-header" style="padding-top: 100px;">
+        <div class="catalog-header-content">
+            <h1 class="catalog-title"><i class="fas fa-fire" style="color: #ff6b6b;"></i> Tendances</h1>
+            <p style="color: var(--text-secondary); margin-top: 10px;">
+                Les films et séries les plus regardés cette semaine
+            </p>
+            
+            <div class="catalog-filters" style="margin-top: 20px;">
+                <a href="trending.html?type=all" class="filter-btn active">Tous</a>
+                <a href="trending.html?type=movie" class="filter-btn">Films</a>
+                <a href="trending.html?type=series" class="filter-btn">Séries</a>
             </div>
         </div>
     </header>
 
-    <!-- Main Content -->
-    <main>
-        <!-- Trending Hero -->
-        <section class="trending-hero">
-            <div class="trending-hero-content">
-                <div class="trending-badge">
-                    <span>🔥</span>
-                    <span>En ce moment</span>
-                </div>
-                <h1>Tendances</h1>
-                <p>Découvrez ce que regardent les millions d'utilisateurs ZeeXClub. Les films et séries les plus populaires, mis à jour en temps réel.</p>
-            </div>
-        </section>
-
-        <!-- Stats -->
-        <div class="trending-stats">
-            <div class="stat-card">
-                <div class="stat-icon">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
-                        <circle cx="9" cy="7" r="4"></circle>
-                        <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
-                        <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
-                    </svg>
-                </div>
-                <div class="stat-value">2.4M</div>
-                <div class="stat-label">Spectateurs actifs</div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-icon">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
-                    </svg>
-                </div>
-                <div class="stat-value">847</div>
-                <div class="stat-label">Nouveautés cette semaine</div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-icon">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M22 12h-4l-3 9L9 3l-3 9H2"></path>
-                    </svg>
-                </div>
-                <div class="stat-value">+156%</div>
-                <div class="stat-label">Tendance vs hier</div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-icon">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <circle cx="12" cy="12" r="10"></circle>
-                        <polyline points="12 6 12 12 16 14"></polyline>
-                    </svg>
-                </div>
-                <div class="stat-value">12h</div>
-                <div class="stat-label">Temps moyen/jour</div>
-            </div>
+    <!-- Top 10 Section -->
+    <section class="content-section" style="padding: 0 4% 40px;">
+        <h2 class="section-title" style="margin-bottom: 25px;">Top 10 aujourd'hui</h2>
+        <div class="top-ten-grid" id="topTenGrid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 20px;">
+            <!-- Injecté par JS -->
+            <div class="skeleton" style="aspect-ratio: 2/3; border-radius: 8px;"></div>
+            <div class="skeleton" style="aspect-ratio: 2/3; border-radius: 8px;"></div>
+            <div class="skeleton" style="aspect-ratio: 2/3; border-radius: 8px;"></div>
+            <div class="skeleton" style="aspect-ratio: 2/3; border-radius: 8px;"></div>
+            <div class="skeleton" style="aspect-ratio: 2/3; border-radius: 8px;"></div>
         </div>
+    </section>
 
-        <!-- Top 10 -->
-        <section class="top-10-section">
-            <div class="top-10-header">
-                <div class="top-10-icon">🏆</div>
-                <h2 class="top-10-title">Top 10 <span>France</span></h2>
-            </div>
-            <div class="top-10-grid" id="top-10-grid">
-                <!-- Généré par JS -->
-                <div class="top-item">
-                    <div class="top-rank top-3">1</div>
-                    <div class="top-poster">
-                        <img src="/img/posters/dune2.jpg" alt="Dune Partie 2">
-                    </div>
-                    <div class="top-info">
-                        <h3>Dune : Partie 2</h3>
-                        <div class="top-meta">
-                            <span>2024</span>
-                            <span class="top-views">
-                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
-                                    <circle cx="12" cy="12" r="3"></circle>
-                                </svg>
-                                4.2M
-                            </span>
-                        </div>
-                        <span class="top-trend up">↗ +12%</span>
-                    </div>
-                </div>
-                
-                <div class="top-item">
-                    <div class="top-rank top-3">2</div>
-                    <div class="top-poster">
-                        <img src="/img/posters/loki.jpg" alt="Loki">
-                    </div>
-                    <div class="top-info">
-                        <h3>Loki - Saison 2</h3>
-                        <div class="top-meta">
-                            <span>2023</span>
-                            <span class="top-views">
-                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
-                                    <circle cx="12" cy="12" r="3"></circle>
-                                </svg>
-                                3.8M
-                            </span>
-                        </div>
-                        <span class="top-trend up">↗ +8%</span>
-                    </div>
-                </div>
-                
-                <div class="top-item">
-                    <div class="top-rank top-3">3</div>
-                    <div class="top-poster">
-                        <img src="/img/posters/oppenheimer.jpg" alt="Oppenheimer">
-                    </div>
-                    <div class="top-info">
-                        <h3>Oppenheimer</h3>
-                        <div class="top-meta">
-                            <span>2023</span>
-                            <span class="top-views">
-                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
-                                    <circle cx="12" cy="12" r="3"></circle>
-                                </svg>
-                                3.1M
-                            </span>
-                        </div>
-                        <span class="top-trend down">↘ -3%</span>
-                    </div>
-                </div>
-                
-                <div class="top-item">
-                    <div class="top-rank">4</div>
-                    <div class="top-poster">
-                        <img src="/img/posters/frieren.jpg" alt="Frieren">
-                    </div>
-                    <div class="top-info">
-                        <h3>Frieren: Beyond Journey's End</h3>
-                        <div class="top-meta">
-                            <span>2023</span>
-                            <span class="top-views">
-                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
-                                    <circle cx="12" cy="12" r="3"></circle>
-                                </svg>
-                                2.9M
-                            </span>
-                        </div>
-                        <span class="top-trend new">NEW</span>
-                    </div>
-                </div>
-                
-                <div class="top-item">
-                    <div class="top-rank">5</div>
-                    <div class="top-poster">
-                        <img src="/img/posters/batman.jpg" alt="The Batman">
-                    </div>
-                    <div class="top-info">
-                        <h3>The Batman</h3>
-                        <div class="top-meta">
-                            <span>2022</span>
-                            <span class="top-views">
-                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
-                                    <circle cx="12" cy="12" r="3"></circle>
-                                </svg>
-                                2.7M
-                            </span>
-                        </div>
-                        <span class="top-trend up">↗ +5%</span>
-                    </div>
-                </div>
-                
-                <div class="top-item">
-                    <div class="top-rank">6</div>
-                    <div class="top-poster">
-                        <img src="/img/posters/jujutsu.jpg" alt="Jujutsu Kaisen">
-                    </div>
-                    <div class="top-info">
-                        <h3>Jujutsu Kaisen</h3>
-                        <div class="top-meta">
-                            <span>2020</span>
-                            <span class="top-views">
-                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
-                                    <circle cx="12" cy="12" r="3"></circle>
-                                </svg>
-                                2.5M
-                            </span>
-                        </div>
-                        <span class="top-trend up">↗ +15%</span>
-                    </div>
-                </div>
-                
-                <div class="top-item">
-                    <div class="top-rank">7</div>
-                    <div class="top-poster">
-                        <img src="/img/posters/interstellar.jpg" alt="Interstellar">
-                    </div>
-                    <div class="top-info">
-                        <h3>Interstellar</h3>
-                        <div class="top-meta">
-                            <span>2014</span>
-                            <span class="top-views">
-                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
-                                    <circle cx="12" cy="12" r="3"></circle>
-                                </svg>
-                                2.3M
-                            </span>
-                        </div>
-                        <span class="top-trend down">↘ -2%</span>
-                    </div>
-                </div>
-                
-                <div class="top-item">
-                    <div class="top-rank">8</div>
-                    <div class="top-poster">
-                        <img src="/img/posters/demon-slayer.jpg" alt="Demon Slayer">
-                    </div>
-                    <div class="top-info">
-                        <h3>Demon Slayer</h3>
-                        <div class="top-meta">
-                            <span>2019</span>
-                            <span class="top-views">
-                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
-                                    <circle cx="12" cy="12" r="3"></circle>
-                                </svg>
-                                2.1M
-                            </span>
-                        </div>
-                        <span class="top-trend up">↗ +7%</span>
-                    </div>
-                </div>
-                
-                <div class="top-item">
-                    <div class="top-rank">9</div>
-                    <div class="top-poster">
-                        <img src="/img/posters/inception.jpg" alt="Inception">
-                    </div>
-                    <div class="top-info">
-                        <h3>Inception</h3>
-                        <div class="top-meta">
-                            <span>2010</span>
-                            <span class="top-views">
-                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
-                                    <circle cx="12" cy="12" r="3"></circle>
-                                </svg>
-                                1.9M
-                            </span>
-                        </div>
-                        <span class="top-trend down">↘ -5%</span>
-                    </div>
-                </div>
-                
-                <div class="top-item">
-                    <div class="top-rank">10</div>
-                    <div class="top-poster">
-                        <img src="/img/posters/one-piece.jpg" alt="One Piece">
-                    </div>
-                    <div class="top-info">
-                        <h3>One Piece</h3>
-                        <div class="top-meta">
-                            <span>1999</span>
-                            <span class="top-views">
-                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
-                                    <circle cx="12" cy="12" r="3"></circle>
-                                </svg>
-                                1.8M
-                            </span>
-                        </div>
-                        <span class="top-trend up">↗ +22%</span>
-                    </div>
-                </div>
-            </div>
-        </section>
-
-        <!-- Trending Categories -->
-        <section class="trending-categories">
-            <div class="category-tabs">
-                <button class="category-tab active" data-category="all">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <rect x="3" y="3" width="7" height="7"></rect>
-                        <rect x="14" y="3" width="7" height="7"></rect>
-                        <rect x="14" y="14" width="7" height="7"></rect>
-                        <rect x="3" y="14" width="7" height="7"></rect>
-                    </svg>
-                    Tout
-                </button>
-                <button class="category-tab" data-category="movies">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <rect x="2" y="2" width="20" height="20" rx="2.18"></rect>
-                        <line x1="7" y1="2" x2="7" y2="22"></line>
-                        <line x1="17" y1="2" x2="17" y2="22"></line>
-                        <line x1="2" y1="12" x2="22" y2="12"></line>
-                        <line x1="2" y1="7" x2="7" y2="7"></line>
-                        <line x1="2" y1="17" x2="7" y2="17"></line>
-                        <line x1="17" y1="17" x2="22" y2="17"></line>
-                        <line x1="17" y1="7" x2="22" y2="7"></line>
-                    </svg>
-                    Films
-                </button>
-                <button class="category-tab" data-category="series">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect>
-                        <line x1="8" y1="21" x2="16" y2="21"></line>
-                        <line x1="12" y1="17" x2="12" y2="21"></line>
-                    </svg>
-                    Séries
-                </button>
-                <button class="category-tab" data-category="anime">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"></path>
-                    </svg>
-                    Anime
-                </button>
-                <button class="category-tab" data-category="new">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
-                    </svg>
-                    Nouveautés
-                </button>
-            </div>
-            
-            <div class="movie-grid" id="trending-grid">
-                <!-- Généré par JS -->
-            </div>
-        </section>
-
-        <!-- Viral Section -->
-        <section class="viral-section">
-            <div class="viral-header">
-                <h3 class="viral-title">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 28px; height: 28px; color: var(--primary-red);">
-                        <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"></path>
-                    </svg>
-                    Viral cette semaine
-                    <span class="viral-badge">Live</span>
-                </h3>
-                <a href="catalog.html?sort=viral" class="section-link">
-                    Voir tout
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 16px; height: 16px;">
-                        <polyline points="9 18 15 12 9 6"></polyline>
-                    </svg>
-                </a>
-            </div>
-            
-            <div class="viral-grid">
-                <div class="viral-card">
-                    <img src="/img/viral/viral1.jpg" alt="Viral 1">
-                    <div class="viral-overlay">
-                        <div class="viral-rank">#1</div>
-                        <div class="viral-info">
-                            <h4>Attack on Titan Final</h4>
-                            <div class="viral-stats">
-                                <span>
-                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
-                                        <circle cx="12" cy="12" r="3"></circle>
-                                    </svg>
-                                    12.5M vues
-                                </span>
-                                <span>+450%</span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="viral-card">
-                    <img src="/img/viral/viral2.jpg" alt="Viral 2">
-                    <div class="viral-overlay">
-                        <div class="viral-rank">#2</div>
-                        <div class="viral-info">
-                            <h4>The Last of Us</h4>
-                            <div class="viral-stats">
-                                <span>
-                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
-                                        <circle cx="12" cy="12" r="3"></circle>
-                                    </svg>
-                                    9.8M vues
-                                </span>
-                                <span>+320%</span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="viral-card">
-                    <img src="/img/viral/viral3.jpg" alt="Viral 3">
-                    <div class="viral-overlay">
-                        <div class="viral-rank">#3</div>
-                        <div class="viral-info">
-                            <h4>Succession</h4>
-                            <div class="viral-stats">
-                                <span>
-                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
-                                        <circle cx="12" cy="12" r="3"></circle>
-                                    </svg>
-                                    8.2M vues
-                                </span>
-                                <span>+280%</span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="viral-card">
-                    <img src="/img/viral/viral4.jpg" alt="Viral 4">
-                    <div class="viral-overlay">
-                        <div class="viral-rank">#4</div>
-                        <div class="viral-info">
-                            <h4>Chainsaw Man</h4>
-                            <div class="viral-stats">
-                                <span>
-                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
-                                        <circle cx="12" cy="12" r="3"></circle>
-                                    </svg>
-                                    7.5M vues
-                                </span>
-                                <span>+195%</span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </section>
-    </main>
+    <!-- Toutes les tendances -->
+    <section class="content-section">
+        <h2 class="section-title" style="margin-bottom: 25px; padding: 0 4%;">Populaires</h2>
+        <div class="catalog-grid" id="trendingGrid" style="padding: 0 4%;">
+            <div class="skeleton" style="aspect-ratio: 2/3;"></div>
+            <div class="skeleton" style="aspect-ratio: 2/3;"></div>
+            <div class="skeleton" style="aspect-ratio: 2/3;"></div>
+            <div class="skeleton" style="aspect-ratio: 2/3;"></div>
+            <div class="skeleton" style="aspect-ratio: 2/3;"></div>
+            <div class="skeleton" style="aspect-ratio: 2/3;"></div>
+        </div>
+    </section>
 
     <!-- Footer -->
-    <footer class="main-footer">
-        <div class="footer-wave">
-            <svg viewBox="0 0 1440 120" preserveAspectRatio="none">
-                <path d="M0,64 C480,150 960,-20 1440,64 L1440,120 L0,120 Z" fill="#0A0A0A"/>
-            </svg>
-        </div>
+    <footer class="footer">
         <div class="footer-content">
-            <div class="footer-brand">
-                <img src="/img/logo.png" alt="ZeeXClub" class="footer-logo" style="height: 40px; width: auto;">
-                <p class="footer-tagline">Votre cinéma, partout, tout le temps.</p>
+            <div class="footer-section">
+                <h3 class="footer-title">ZeeXClub</h3>
+                <p>Votre plateforme de streaming préférée. Films et séries en HD.</p>
                 <div class="social-links">
-                    <a href="#" class="social-link">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M23 3a10.9 10.9 0 0 1-3.14 1.53 4.48 4.48 0 0 0-7.86 3v1A10.66 10.66 0 0 1 3 4s-4 9 5 13a11.64 11.64 0 0 1-7 2c9 5 20 0 20-11.5a4.5 4.5 0 0 0-.08-.83A7.72 7.72 0 0 0 23 3z"></path>
-                        </svg>
-                    </a>
-                    <a href="#" class="social-link">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect>
-                            <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path>
-                            <line x1="17.5" y1="6.5" x2="17.51" y2="6.5"></line>
-                        </svg>
-                    </a>
-                    <a href="#" class="social-link">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M18 9a5 5 0 0 0-4-2 5 5 0 0 0-4 2"></path>
-                            <path d="M6 9a5 5 0 0 0 4 2 5 5 0 0 0 4-2"></path>
-                            <circle cx="8" cy="12" r r="1" fill="currentColor"></="1" fill="currentColor"></circle>
-                            <circle cx="16" cy="12" r="1" fill="currentColor"></circle>
-                            <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"></path>
-                        </svg>
-                    </a>
+                    <a href="#"><i class="fab fa-twitter"></i></a>
+                    <a href="#"><i class="fab fa-instagram"></i></a>
+                    <a href="#"><i class="fab fa-discord"></i></a>
                 </div>
             </div>
-            
-            <nav class="footer-nav">
-                <div class="footer-column">
-                    <h4>Navigation</h4>
-                    <ul>
-                        <li><a href="index.html">Accueil</a></li>
-                        <li><a href="catalog.html">Catalogue</a></li>
-                        <li><a href="trending.html">Tendances</a></li>
-                        <li><a href="mylist.html">Ma liste</a></li>
-                    </ul>
-                </div>
-                <div class="footer-column">
-                    <h4>Catégories</h4>
-                    <ul>
-                        <li><a href="catalog.html?genre=action">Action</a></li>
-                        <li><a href="catalog.html?genre=comedie">Comédie</a></li>
-                        <li><a href="catalog.html?genre=drame">Drame</a></li>
-                        <li><a href="catalog.html?genre=documentaire">Documentaire</a></li>
-                    </ul>
-                </div>
-                <div class="footer-column">
-                    <h4>Aide</h4>
-                    <ul>
-                        <li><a href="#">FAQ</a></li>
-                        <li><a href="#">Contact</a></li>
-                        <li><a href="#">Signaler un problème</a></li>
-                    </ul>
-                </div>
-                <div class="footer-column">
-                    <h4>Légal</h4>
-                    <ul>
-                        <li><a href="#">Conditions d'utilisation</a></li>
-                        <li><a href="#">Confidentialité</a></li>
-                        <li><a href="#">Cookies</a></li>
-                    </ul>
-                </div>
-            </nav>
-       circle>
-                            <circle cx="16" cy="12" r="1" fill="currentColor"></circle>
-                            <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"></path>
-                        </svg>
-                    </a>
-                </div>
+            <div class="footer-section">
+                <h4>Navigation</h4>
+                <ul>
+                    <li><a href="index.html">Accueil</a></li>
+                    <li><a href="catalog.html">Catalogue</a></li>
+                    <li><a href="catalog.html?type=movie">Films</a></li>
+                    <li><a href="catalog.html?type=series">Séries</a></li>
+                </ul>
             </div>
-            
-            <nav class="footer-nav">
-                <div class="footer-column">
-                    <h4>Navigation</h4>
-                    <ul>
-                        <li><a href="index.html">Accueil</a></li>
-                        <li><a href="catalog.html">Catalogue</a></li>
-                        <li><a href="trending.html">Tendances</a></li>
-                        <li><a href="mylist.html">Ma liste</a></li>
-                    </ul>
-                </div>
-                <div class="footer-column">
-                    <h4>Catégories</h4>
-                    <ul>
-                        <li><a href="catalog.html?genre=action">Action</a></li>
-                        <li><a href="catalog.html?genre=comedie">Comédie</a></li>
-                        <li><a href="catalog.html?genre=drame">Drame</a></li>
-                        <li><a href="catalog.html?genre=documentaire">Documentaire</a></li>
-                    </ul>
-                </div>
-                <div class="footer-column">
-                    <h4>Aide</h4>
-                    <ul>
-                        <li><a href="#">FAQ</a></li>
-                        <li><a href="#">Contact</a></li>
-                        <li><a href="#">Signaler un problème</a></li>
-                    </ul>
-                </div>
-                <div class="footer-column">
-                    <h4>Légal</h4>
-                    <ul>
-                        <li><a href="#">Conditions d'utilisation</a></li>
-                        <li><a href="#">Confidentialité</a></li>
-                        <li><a href="#">Cookies</a></li>
-                    </ul>
-                </div>
-            </nav>
+            <div class="footer-section">
+                <h4>Mon compte</h4>
+                <ul>
+                    <li><a href="profile.html">Profil</a></li>
+                    <li><a href="mylist.html">Ma Liste</a></li>
+                    <li><a href="#">Paramètres</a></li>
+                </ul>
+            </div>
+            <div class="footer-section">
+                <h4>Légal</h4>
+                <ul>
+                    <li><a href="#">Mentions légales</a></li>
+                    <li><a href="#">Confidentialité</a></li>
+                    <li><a href="#">CGU</a></li>
+                </ul>
+            </div>
         </div>
         <div class="footer-bottom">
             <p>&copy; 2024 ZeeXClub. Tous droits réservés.</p>
-            <p class="footer-made">Fait avec <span class="heart">❤</span> pour les cinéphiles</p>
         </div>
     </footer>
 
-    <!-- Toast Container -->
-    <div id="toast-container" class="toast-container"></div>
+    <!-- Loading Overlay -->
+    <div class="loading-overlay" id="loadingOverlay">
+        <div class="spinner"></div>
+    </div>
 
     <!-- Scripts -->
-    <script type="module" src="/js/main.js"></script>
-    <script type="module" src="/js/trending.js"></script>
-    <script type="module" src="/js/bottom-nav.js"></script>
+    <script type="module" src="js/config.js"></script>
+    <script type="module" src="js/api.js"></script>
+    <script type="module">
+        import api from './js/api.js';
+        
+        document.addEventListener('DOMContentLoaded', async () => {
+            try {
+                // Charger les tendances
+                const response = await api.getTrending('all', 'week');
+                const shows = response.data || [];
+                
+                // Top 10
+                const topTenGrid = document.getElementById('topTenGrid');
+                if (topTenGrid && shows.length > 0) {
+                    topTenGrid.innerHTML = shows.slice(0, 10).map((show, idx) => `
+                        <div class="movie-card" style="position: relative;" onclick="window.location.href='details.html?id=${show.id}'">
+                            <div style="position: absolute; top: -10px; left: -10px; font-size: 4rem; font-weight: 800; color: rgba(255,255,255,0.2); font-style: italic; z-index: 1;">
+                                ${idx + 1}
+                            </div>
+                            <img src="${api.getImageUrl(show.poster_path, 'w500')}" 
+                                 alt="${show.title}" 
+                                 class="movie-poster" 
+                                 style="position: relative; z-index: 2;">
+                            <div class="movie-info">
+                                <h3 class="movie-title">${show.title}</h3>
+                                <div class="movie-meta">
+                                    <span class="movie-rating"><i class="fas fa-star"></i> ${show.rating?.toFixed(1) || 'N/A'}</span>
+                                </div>
+                            </div>
+                        </div>
+                    `).join('');
+                }
+                
+                // Toutes les tendances
+                const trendingGrid = document.getElementById('trendingGrid');
+                if (trendingGrid) {
+                    trendingGrid.innerHTML = shows.map(show => `
+                        <div class="movie-card" onclick="window.location.href='details.html?id=${show.id}'">
+                            <img src="${api.getImageUrl(show.poster_path, 'w500')}" 
+                                 alt="${show.title}" 
+                                 class="movie-poster"
+                                 loading="lazy">
+                            <div class="movie-info">
+                                <h3 class="movie-title">${show.title}</h3>
+                                <div class="movie-meta">
+                                    <span>${show.type === 'movie' ? 'Film' : 'Série'}</span>
+                                    ${show.rating ? `<span class="movie-rating"><i class="fas fa-star"></i> ${show.rating.toFixed(1)}</span>` : ''}
+                                </div>
+                            </div>
+                        </div>
+                    `).join('');
+                }
+                
+            } catch (error) {
+                console.error('Erreur chargement tendances:', error);
+            }
+        });
+    </script>
 </body>
 </html>

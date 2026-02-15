@@ -1,591 +1,384 @@
-/* frontend/css/responsive.css */
-/* Styles responsives - Version AniFlix Modern */
-/* 500+ lignes */
-
 /* ============================================
-   BREAKPOINTS
-   ============================================
-   - Mobile: < 640px
-   - Tablet: 640px - 1024px
-   - Desktop: > 1024px
-   - Large: > 1400px
+   ZeeXClub - Styles Responsive
+   Mobile & Tablettes
    ============================================ */
 
-/* ============================================
-   MOBILE FIRST (< 640px)
-   ============================================ */
-
-@media (max-width: 640px) {
-    /* Header */
-    .main-header {
-        height: 60px;
-    }
-    
-    .header-content {
-        padding: 0 1rem;
-    }
-    
-    .logo-svg {
-        height: 32px;
-    }
-    
-    .primary-nav {
-        display: none;
-    }
-    
-    .mobile-menu-toggle {
-        display: flex;
-    }
-    
-    .search-wrapper {
-        position: static;
-    }
-    
-    .search-panel {
-        position: fixed;
-        top: 60px;
-        left: 0;
-        right: 0;
-        width: 100%;
-        border-radius: 0;
-    }
-    
-    /* Hero */
-    .hero-section {
-        min-height: 500px;
-        height: 70vh;
-    }
-    
-    .hero-content-wrapper {
-        padding: 0 1rem;
-    }
-    
-    .hero-content {
-        max-width: 100%;
-        padding-top: 60px;
+/* Tablettes (max-width: 1024px) */
+@media (max-width: 1024px) {
+    :root {
+        --section-padding: 40px;
     }
     
     .hero-title {
-        font-size: 2.5rem;
+        font-size: 3rem;
     }
     
-    .title-part {
-        -webkit-text-stroke-width: 1px;
+    .details-content {
+        grid-template-columns: 250px 1fr;
+        gap: 30px;
     }
     
-    .hero-synopsis {
-        font-size: 0.9375rem;
-        -webkit-line-clamp: 2;
-    }
-    
-    .hero-meta {
-        font-size: 0.8125rem;
-    }
-    
-    .hero-actions {
-        flex-direction: column;
-        gap: 0.75rem;
-    }
-    
-    .btn-hero {
-        width: 100%;
-        justify-content: center;
-        padding: 0.875rem 1.5rem;
-    }
-    
-    .btn-hero-icon {
-        width: 100%;
-        height: auto;
-        padding: 0.875rem;
-    }
-    
-    .hero-controls {
-        bottom: 80px;
-    }
-    
-    .hero-nav {
-        width: 40px;
-        height: 40px;
-    }
-    
-    /* Content Sections */
-    .content-section {
-        padding: 2rem 1rem;
-    }
-    
-    .section-header {
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 1rem;
-    }
-    
-    .section-title {
-        font-size: 1.25rem;
-    }
-    
-    .section-filters {
-        width: 100%;
-        overflow-x: auto;
-        padding-bottom: 0.5rem;
-    }
-    
-    .filter-chip {
-        flex-shrink: 0;
-    }
-    
-    /* Movie Grid */
-    .movie-grid {
-        grid-template-columns: repeat(2, 1fr);
-        gap: 0.75rem;
+    .details-title {
+        font-size: 2.2rem;
     }
     
     .movie-card {
-        border-radius: 12px;
+        width: 180px;
     }
     
-    .card-image {
-        border-radius: 12px 12px 0 0;
+    .footer-content {
+        grid-template-columns: 1fr 1fr;
+        gap: 30px;
+    }
+}
+
+/* Mobile (max-width: 768px) */
+@media (max-width: 768px) {
+    :root {
+        --navbar-height: 60px;
     }
     
-    .card-content {
-        padding: 0.75rem;
-    }
-    
-    .card-title {
-        font-size: 0.8125rem;
-    }
-    
-    .card-meta {
-        font-size: 0.75rem;
-    }
-    
-    .play-btn {
-        width: 50px;
-        height: 50px;
-    }
-    
-    .play-btn svg {
-        width: 20px;
-        height: 20px;
-    }
-    
-    /* Top 10 */
-    .top-card {
-        width: 240px;
-    }
-    
-    .top-number {
-        font-size: 5rem;
-        -webkit-text-stroke-width: 3px;
-    }
-    
-    .top-poster {
-        width: 120px;
-        height: 180px;
-    }
-    
-    /* Genre Grid */
-    .genre-grid {
-        grid-template-columns: repeat(2, 1fr);
-        gap: 0.75rem;
-    }
-    
-    .genre-card {
-        height: 100px;
-        padding: 1rem;
-    }
-    
-    .genre-name {
-        font-size: 1rem;
-    }
-    
-    .genre-count {
-        font-size: 0.75rem;
-    }
-    
-    /* CTA Section */
-    .cta-section {
-        padding: 3rem 1rem;
-        margin-top: 2rem;
-    }
-    
-    .cta-title {
-        font-size: 1.75rem;
-    }
-    
-    .cta-text {
-        font-size: 1rem;
-    }
-    
-    .cta-buttons {
+    /* Navigation Mobile */
+    .nav-links {
+        position: fixed;
+        top: var(--navbar-height);
+        left: -100%;
+        width: 80%;
+        max-width: 300px;
+        height: calc(100vh - var(--navbar-height));
+        background: var(--bg-darker);
         flex-direction: column;
-        width: 100%;
+        padding: 30px 20px;
+        gap: 20px;
+        transition: left 0.3s ease;
+        box-shadow: var(--shadow-lg);
+        margin-left: 0;
     }
     
-    .btn-cta-primary,
-    .btn-cta-secondary {
-        width: 100%;
+    .nav-links.active {
+        left: 0;
+    }
+    
+    .nav-link {
+        font-size: 1.1rem;
+        padding: 10px 0;
+    }
+    
+    .mobile-menu-btn {
+        display: block;
+    }
+    
+    .search-box input {
+        width: 150px;
+        padding: 6px 30px 6px 12px;
+    }
+    
+    .search-box input:focus {
+        width: 180px;
+    }
+    
+    /* Hero Mobile */
+    .hero {
+        height: 70vh;
+        min-height: 500px;
+    }
+    
+    .hero-title {
+        font-size: 2rem;
+    }
+    
+    .hero-description {
+        font-size: 0.95rem;
+        -webkit-line-clamp: 2;
+    }
+    
+    .hero-actions {
+        flex-wrap: wrap;
+    }
+    
+    .btn {
+        padding: 10px 20px;
+        font-size: 0.9rem;
+    }
+    
+    /* Content Mobile */
+    .main-content {
+        margin-top: -50px;
+    }
+    
+    .section-title {
+        font-size: 1.2rem;
+    }
+    
+    .movie-card {
+        width: 140px;
+    }
+    
+    .movie-info {
+        opacity: 1;
+        transform: translateY(0);
+        background: linear-gradient(to top, rgba(0,0,0,0.9) 0%, rgba(0,0,0,0.5) 50%, transparent 100%);
+        padding: 15px 10px 10px;
+    }
+    
+    .movie-title {
+        font-size: 0.85rem;
+    }
+    
+    .slider-arrow {
+        display: none;
+    }
+    
+    /* Details Mobile */
+    .details-hero {
+        min-height: auto;
+        padding: 80px 4% 40px;
+    }
+    
+    .details-content {
+        grid-template-columns: 1fr;
+        gap: 20px;
+    }
+    
+    .details-poster {
+        width: 150px;
+        margin: 0 auto;
+    }
+    
+    .details-title {
+        font-size: 1.8rem;
         text-align: center;
     }
     
-    /* Footer */
+    .details-meta {
+        justify-content: center;
+        font-size: 0.85rem;
+    }
+    
+    .details-description {
+        text-align: center;
+        font-size: 0.95rem;
+    }
+    
+    .details-actions {
+        justify-content: center;
+    }
+    
+    /* Episodes Mobile */
+    .episode-item {
+        grid-template-columns: 100px 1fr;
+        gap: 15px;
+    }
+    
+    .episode-thumbnail {
+        width: 100px;
+    }
+    
+    .episode-meta {
+        display: none;
+    }
+    
+    .episode-play {
+        grid-column: 1 / -1;
+        width: 100%;
+        border-radius: var(--radius-sm);
+        margin-top: 10px;
+    }
+    
+    /* Player Mobile */
+    .player-container {
+        aspect-ratio: 16/9;
+        max-height: 50vh;
+    }
+    
+    .server-buttons {
+        flex-direction: column;
+    }
+    
+    .server-btn {
+        width: 100%;
+        justify-content: center;
+    }
+    
+    /* Footer Mobile */
     .footer-content {
         grid-template-columns: 1fr;
-        gap: 2rem;
-        padding: 0 1rem 2rem;
-    }
-    
-    .footer-brand {
         text-align: center;
-    }
-    
-    .footer-logo {
-        margin: 0 auto;
-    }
-    
-    .footer-tagline {
-        margin: 0 auto;
+        gap: 30px;
     }
     
     .social-links {
         justify-content: center;
     }
     
-    .footer-nav {
-        grid-template-columns: repeat(2, 1fr);
-        gap: 1.5rem;
+    .footer-section ul {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 15px;
     }
     
-    .footer-bottom {
-        flex-direction: column;
-        text-align: center;
-        gap: 0.5rem;
-        padding: 1rem;
-    }
-    
-    /* Toast */
-    .toast-container {
-        left: 1rem;
-        right: 1rem;
-        bottom: 1rem;
-    }
-    
-    .toast {
-        min-width: unset;
+    .footer-section ul li {
+        margin: 0;
     }
 }
 
-/* ============================================
-   TABLET (640px - 1024px)
-   ============================================ */
-
-@media (min-width: 641px) and (max-width: 1024px) {
-    .header-content {
-        padding: 0 1.5rem;
-    }
-    
-    .nav-list {
-        gap: 1.5rem;
-    }
-    
-    .nav-text {
-        font-size: 0.875rem;
-    }
-    
-    .hero-section {
-        min-height: 600px;
-    }
-    
-    .hero-title {
-        font-size: 4rem;
-    }
-    
-    .content-section {
-        padding: 2.5rem 1.5rem;
-    }
-    
-    .movie-grid {
-        grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
-        gap: 1rem;
-    }
-    
-    .genre-grid {
-        grid-template-columns: repeat(3, 1fr);
-    }
-    
-    .footer-content {
-        grid-template-columns: 1fr 1.5fr;
-    }
-    
-    .footer-nav {
-        grid-template-columns: repeat(2, 1fr);
-    }
-}
-
-/* ============================================
-   DESKTOP (> 1024px)
-   ============================================ */
-
-@media (min-width: 1025px) {
-    .mobile-menu-toggle,
-    .mobile-nav {
-        display: none !important;
-    }
-    
-    .movie-grid {
-        grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-    }
-}
-
-/* ============================================
-   LARGE SCREENS (> 1400px)
-   ============================================ */
-
-@media (min-width: 1400px) {
-    .movie-grid {
-        grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-    }
-    
-    .hero-title {
-        font-size: 5.5rem;
-    }
-    
-    .content-section {
-        max-width: 1800px;
-    }
-}
-
-/* ============================================
-   ORIENTATION
-   ============================================ */
-
-@media (max-height: 500px) and (orientation: landscape) {
-    .hero-section {
+/* Petit Mobile (max-width: 480px) */
+@media (max-width: 480px) {
+    .hero {
+        height: 60vh;
         min-height: 400px;
-        height: auto;
     }
     
-    .hero-content {
-        padding-top: 80px;
-        padding-bottom: 2rem;
+    .hero-title {
+        font-size: 1.6rem;
     }
     
-    .hero-synopsis {
-        -webkit-line-clamp: 2;
+    .hero-badge {
+        font-size: 0.75rem;
+        padding: 4px 10px;
     }
     
-    .scroll-indicator {
+    .hero-actions .btn-secondary {
         display: none;
     }
-}
-
-/* ============================================
-   HIGH DPI / RETINA
-   ============================================ */
-
-@media (-webkit-min-device-pixel-ratio: 2), (min-resolution: 192dpi) {
-    .logo-svg,
-    .footer-logo {
-        image-rendering: -webkit-optimize-contrast;
+    
+    .movie-card {
+        width: 120px;
+    }
+    
+    .catalog-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 15px;
+        padding: 20px 4%;
+    }
+    
+    .catalog-title {
+        font-size: 1.8rem;
+    }
+    
+    .filter-btn {
+        padding: 6px 12px;
+        font-size: 0.85rem;
+    }
+    
+    .details-title {
+        font-size: 1.5rem;
+    }
+    
+    .episode-item {
+        grid-template-columns: 80px 1fr;
+        padding: 15px;
+    }
+    
+    .episode-thumbnail {
+        width: 80px;
+    }
+    
+    .episode-info h3 {
+        font-size: 0.95rem;
+    }
+    
+    .episode-info p {
+        font-size: 0.8rem;
     }
 }
 
-/* ============================================
-   REDUCED MOTION
-   ============================================ */
+/* Très petit écran (max-width: 360px) */
+@media (max-width: 360px) {
+    .movie-card {
+        width: 100px;
+    }
+    
+    .hero-title {
+        font-size: 1.4rem;
+    }
+    
+    .btn {
+        padding: 8px 16px;
+        font-size: 0.85rem;
+    }
+}
 
+/* Orientation paysage sur mobile */
+@media (max-height: 500px) and (orientation: landscape) {
+    .hero {
+        height: 100vh;
+    }
+    
+    .navbar {
+        background: rgba(0,0,0,0.9);
+    }
+    
+    .movie-card:hover {
+        transform: scale(1.02);
+    }
+}
+
+/* Tablette paysage */
+@media (min-width: 1024px) and (max-width: 1366px) {
+    .movie-card {
+        width: 160px;
+    }
+    
+    .details-content {
+        grid-template-columns: 280px 1fr;
+    }
+}
+
+/* Grands écrans */
+@media (min-width: 1920px) {
+    .nav-container,
+    .main-content,
+    .footer-content {
+        max-width: 1800px;
+    }
+    
+    .movie-card {
+        width: 240px;
+    }
+    
+    .hero-title {
+        font-size: 5rem;
+    }
+}
+
+/* Accessibilité - Réduction des animations */
 @media (prefers-reduced-motion: reduce) {
-    *,
-    *::before,
-    *::after {
+    * {
         animation-duration: 0.01ms !important;
         animation-iteration-count: 1 !important;
         transition-duration: 0.01ms !important;
-        scroll-behavior: auto !important;
     }
     
-    .hero-image {
-        transform: none !important;
-    }
-    
-    .parallax {
-        transform: none !important;
+    html {
+        scroll-behavior: auto;
     }
 }
 
-/* ============================================
-   DARK MODE ENFORCEMENT
-   ============================================ */
-
-@media (prefers-color-scheme: light) {
-    /* Force dark mode regardless of system preference */
+/* Mode sombre forcé (déjà sombre par défaut mais pour s'assurer) */
+@media (prefers-color-scheme: dark) {
     :root {
-        color-scheme: dark;
+        --bg-dark: #141414;
+        --text-primary: #ffffff;
     }
 }
 
-/* ============================================
-   PRINT STYLES
-   ============================================ */
-
+/* Impression */
 @media print {
-    .main-header,
-    .hero-section,
-    .mobile-nav,
-    .footer,
+    .navbar,
+    .hero-actions,
     .slider-arrow,
-    .btn-load-more,
-    .play-btn,
-    .card-actions,
-    .video-actions,
-    .server-selector,
-    .comments-section-wrapper,
-    .btn-toggle-comments {
-        display: none !important;
+    .footer {
+        display: none;
     }
     
     body {
-        background: white !important;
-        color: black !important;
+        background: white;
+        color: black;
     }
     
-    .movie-card,
-    .history-item {
+    .movie-card {
         break-inside: avoid;
-        page-break-inside: avoid;
-        border: 1px solid #ddd;
-    }
-    
-    .catalog-grid,
-    .movie-grid {
-        display: block;
-    }
-    
-    .movie-card {
-        margin-bottom: 1rem;
-        display: flex;
-        gap: 1rem;
-        align-items: center;
-    }
-    
-    .card-image {
-        width: 100px;
-        height: 150px;
     }
 }
-
-/* ============================================
-   UTILITY CLASSES
-   ============================================ */
-
-.hide-mobile {
-    display: none;
-}
-
-@media (min-width: 768px) {
-    .hide-mobile {
-        display: initial;
-    }
-    
-    .hide-desktop {
-        display: none;
-    }
-}
-
-.text-center {
-    text-align: center;
-}
-
-.text-left {
-    text-align: left;
-}
-
-.text-right {
-    text-align: right;
-}
-
-.w-full {
-    width: 100%;
-}
-
-.h-full {
-    height: 100%;
-}
-
-.flex {
-    display: flex;
-}
-
-.flex-col {
-    flex-direction: column;
-}
-
-.items-center {
-    align-items: center;
-}
-
-.justify-center {
-    justify-content: center;
-}
-
-.gap-4 {
-    gap: 1rem;
-}
-
-.p-4 {
-    padding: 1rem;
-}
-
-.m-4 {
-    margin: 1rem;
-}
-
-.rounded-lg {
-    border-radius: 0.75rem;
-}
-
-.shadow-lg {
-    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
-}
-
-/* ============================================
-   SAFARI FIXES
-   ============================================ */
-
-@supports (-webkit-touch-callout: none) {
-    /* iOS specific fixes */
-    .hero-section {
-        min-height: -webkit-fill-available;
-    }
-    
-    .search-input,
-    .form-input {
-        font-size: 16px; /* Prevents zoom on focus */
-    }
-}
-
-/* ============================================
-   FIREFOX FIXES
-   ============================================ */
-
-@-moz-document url-prefix() {
-    .movie-grid {
-        display: flex;
-        flex-wrap: wrap;
-    }
-    
-    .movie-card {
-        flex: 0 0 calc(20% - 1.5rem);
-        min-width: 180px;
-    }
-    
-    @media (max-width: 768px) {
-        .movie-card {
-            flex: 0 0 calc(50% - 0.75rem);
-        }
-    }
-}
-
-/* ============================================
-   END RESPONSIVE.CSS
-   ============================================ */

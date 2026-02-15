@@ -1,34 +1,34 @@
-# backend/requirements.txt
-# Backend ZeeXClub - Dépendances Python
+# FastAPI & Serveur
+fastapi==0.109.0
+uvicorn[standard]==0.27.0
+python-multipart==0.0.6
 
-# Framework Web
-Django>=4.2.0,<5.0
-djangorestframework>=3.14.0
-django-cors-headers>=4.0.0
+# Telegram Bot
+pyrogram==2.0.106
+tgcrypto==1.2.5
 
-# Client Supabase
-supabase>=2.0.0
-postgrest>=0.13.0
+# Supabase & Database
+supabase==2.3.4
+psycopg2-binary==2.9.9
+asyncpg==0.29.0
 
-# Bot Telegram
-pyrogram>=2.0.0
-tgcrypto>=1.2.0
+# HTTP Client & API
+httpx==0.26.0
+requests==2.31.0
+aiohttp==3.9.1
 
-# HTTP et API
-aiohttp>=3.8.0
-requests>=2.31.0
-
-# Utilitaires
-python-dotenv>=1.0.0
-Pillow>=10.0.0
-
-# Serveur WSGI/ASGI
-gunicorn>=21.0.0
-uvicorn>=0.23.0
-
-# Cache et performance
-redis>=5.0.0
+# Validation & Utils
+pydantic==2.5.3
+pydantic-settings==2.1.0
+python-dotenv==1.0.0
+email-validator==2.1.0
 
 # Sécurité
-PyJWT>=2.8.0
-cryptography>=41.0.0
+python-jose[cryptography]==3.3.0
+passlib[bcrypt]==1.7.4
+
+# Cache & Performance
+redis==5.0.1
+
+# Logging & Monitoring
+loguru==0.7.2

@@ -1,751 +1,922 @@
 """
-Commandes du bot Telegram ZeeXClub
-Toutes les commandes disponibles pour les administrateurs
+Commandes du Bot Telegram ZeeXClub
+/create, /add, /addf, /view, /done, etc.
 """
 
 import logging
-from typing import Optional
-from pyrogram import Client, filters, enums
-from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton, Message
-from config import ADMIN_IDS
-from bot.sessions import SessionManager
-from bot.utils import (
-    parse_folder_path, is_valid_folder_name, escape_markdown,
-    create_video_summary, fuzzy_search, format_file_size
+import re
+import asyncio
+from typing import Dict, Any, Optional
+from datetime import datetime
+
+from pyrogram import Client, filters
+from pyrogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton, CallbackQuery
+from pyrogram.enums import ParseMode
+
+from config import settings, BOT_MESSAGES, SEASON_EPISODE_PATTERNS
+from database.queries import (
+    create_show, get_show_by_tmdb_id, get_show_by_id,
+    create_season, get_season_by_number, get_seasons_by_show,
+    create_episode, get_episode_by_number,
+    create_video_source, get_or_create_bot_session, update_bot_session,
+    clear_bot_session, create_upload_task, update_upload_task,
+    get_all_shows, get_episode_sources
 )
-from database.supabase_client import supabase_manager
+from services.tmdb_api import search_tmdb, get_tmdb_details, get_tmdb_season
+from services.filemoon_api import upload_to_filemoon
+from services.stream_handler import stream_handler
 
 logger = logging.getLogger(__name__)
 
-def setup_commands(app: Client, session_manager: SessionManager):
+# Stockage temporaire des sessions (en attendant Redis/DB)
+user_sessions: Dict[int, Dict[str, Any]] = {}
+
+
+def setup_commands(bot: Client):
     """
     Configure toutes les commandes du bot
-    
-    Args:
-        app: Client Pyrogram
-        session_manager: Gestionnaire de sessions
     """
-
-    # =========================================================================
-    # COMMANDE START
-    # =========================================================================
     
-    @app.on_message(filters.command("start") & filters.user(ADMIN_IDS))
+    # =========================================================================
+    # COMMANDE /START
+    # =========================================================================
+    @bot.on_message(filters.command("start") & filters.private)
     async def start_command(client: Client, message: Message):
-        """Commande /start - Message de bienvenue et aide rapide"""
-        user = message.from_user
+        """Commande de démarrage"""
+        user_id = message.from_user.id
         
-        welcome_text = f"""
-👋 **Bienvenue sur ZeeXClub Bot, {escape_markdown(user.first_name)}!**
-
-🤖 **Bot de gestion de contenu vidéo**
-
-📋 **Commandes disponibles:**
-
-🗂️ **Gestion des dossiers:**
-• `/create <nom>` - Créer un dossier racine
-• `/addf <dossier>` - Créer un sous-dossier  
-• `/view <nom>` - Voir contenu d'un dossier
-• `/docs` - Lister tous les dossiers
-
-📤 **Ajout de contenu:**
-• `/add <chemin>` - Mode ajout de vidéos
-• `/done` - Terminer le mode ajout
-
-ℹ️ **Utilitaires:**
-• `/stats` - Statistiques du bot
-• `/help` - Aide détaillée
-
-⚡ **Exemple rapide:**
-/create Marvel /addf Marvel /add Marvel/Avengers Puis envoyez vos fichiers vidéo!
-        """
-        
-        await message.reply(welcome_text, disable_web_page_preview=True, parse_mode=enums.ParseMode.MARKDOWN)
-    
-    # =========================================================================
-    # COMMANDE HELP
-    # =========================================================================
-    
-    @app.on_message(filters.command("help") & filters.user(ADMIN_IDS))
-    async def help_command(client: Client, message: Message):
-        """Commande /help - Aide détaillée"""
-        help_text = """
-📚 **GUIDE COMPLET ZeeXClub Bot**
-
-┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
-┃  📁 GESTION DES DOSSIERS        ┃
-┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
-
-**`/create <nom>`**
-Crée un dossier racine (film ou série).
-Ex: `/create Breaking Bad`
-
-**`/addf <dossier_parent>`**
-Crée un sous-dossier dans un dossier existant.
-Le bot vous demandera ensuite le nom du sous-dossier.
-Ex: `/addf Breaking Bad` → répondre `Saison 1`
-
-**`/view <nom>`**
-Affiche les détails d'un dossier avec toutes ses vidéos.
-Supporte la recherche floue (tolère les fautes).
-Ex: `/view breaking bad` ou `/view Breaking Bad/Saison 1`
-
-**`/docs`**
-Liste tous les dossiers racine avec pagination.
-
-┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
-┃  📤 AJOUT DE VIDÉOS             ┃
-┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
-
-**`/add <chemin>`**
-Active le mode ajout de vidéos dans un dossier.
-Formats de chemin acceptés:
-• `/add Dossier` (dossier racine)
-• `/add Parent/Enfant` (sous-dossier)
-
-Une fois activé, envoyez simplement vos fichiers vidéo.
-⚠️ **Important:** Ajoutez une caption avec le numéro d'épisode:
-• `E01` ou `Ep 1`
-• `S01E05` (Saison 1 Épisode 5)
-• `Épisode 3`
-
-Le bot détecte automatiquement et upload sur Filemoon.
-
-**`/done`**
-Termine le mode ajout et affiche un résumé.
-
-┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
-┃  📝 FORMATS DE CAPTION          ┃
-┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
-
-Pour les séries, utilisez ces formats dans la caption:
-
-**Numérotation simple:**
-• `E05` → Épisode 5
-• `Ep 12` → Épisode 12
-• `Épisode 3` → Épisode 3
-
-**Avec saison:**
-• `S01E05` → Saison 1, Épisode 5
-• `S2 Ep 3` → Saison 2, Épisode 3
-
-**Titre personnalisé:**
-• `S01E05 - Le début` → S01E05 avec titre
-
-┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
-┃  ⚡ CONSEILS                    ┃
-┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
-
-• Les noms de dossiers sont sensibles à la casse
-• Utilisez `/docs` pour voir la liste exacte des noms
-• Le bot accepte les vidéos jusqu'à 2GB (limite Telegram)
-• L'upload Filemoon est automatique mais peut prendre du temps
-• En cas d'erreur, vérifiez que le dossier existe avec `/view`
-
-💡 **Besoin d'aide?** Contactez le développeur.
-        """
-        
-        await message.reply(help_text, disable_web_page_preview=True, parse_mode=enums.ParseMode.MARKDOWN)
-    
-    # =========================================================================
-    # COMMANDE CREATE
-    # =========================================================================
-    
-    @app.on_message(filters.command("create") & filters.user(ADMIN_IDS))
-    async def create_folder_command(client: Client, message: Message):
-        """Commande /create - Créer un dossier racine"""
-        try:
-            # Vérifier les arguments
-            command_parts = message.text.split(maxsplit=1)
-            
-            if len(command_parts) < 2:
-                await message.reply(
-                    "❌ **Usage incorrect**\\n\\n"
-                    "Utilisez: `/create <nom_dossier>`\\n"
-                    "Exemple: `/create Stranger Things`",
-                    parse_mode=enums.ParseMode.MARKDOWN
-                )
-                return
-            
-            folder_name = command_parts[1].strip()
-            
-            # Valider le nom
-            is_valid, error_msg = is_valid_folder_name(folder_name)
-            if not is_valid:
-                await message.reply(f"❌ **Nom invalide:** {error_msg}", parse_mode=enums.ParseMode.MARKDOWN)
-                return
-            
-            # Vérifier si le dossier existe déjà (racine uniquement)
-            existing = supabase_manager.get_folder_by_name(folder_name, parent_id=None)
-            if existing:
-                await message.reply(
-                    f"⚠️ **Le dossier existe déjà!**\\n\\n"
-                    f"📁 `{escape_markdown(folder_name)}`\\n"
-                    f"🆔 `{existing[0]['id']}`\\n\\n"
-                    f"Utilisez `/view {escape_markdown(folder_name)}` pour le voir.",
-                    parse_mode=enums.ParseMode.MARKDOWN
-                )
-                return
-            
-            # Créer le dossier
-            result = supabase_manager.create_folder(folder_name, parent_id=None)
-            
-            if result:
-                await message.reply(
-                    f"✅ **Dossier créé avec succès!**\\n\\n"
-                    f"📁 Nom: `{escape_markdown(folder_name)}`\\n"
-                    f"🆔 ID: `{result['id']}`\\n\\n"
-                    f"▶️ Prochaines étapes:\\n"
-                    f"• `/addf {escape_markdown(folder_name)}` pour ajouter des sous-dossiers\\n"
-                    f"• `/add {escape_markdown(folder_name)}` pour ajouter des vidéos directement",
-                    parse_mode=enums.ParseMode.MARKDOWN
-                )
-                logger.info(f"Dossier créé par {message.from_user.id}: {folder_name}")
-            else:
-                await message.reply("❌ **Erreur lors de la création du dossier**", parse_mode=enums.ParseMode.MARKDOWN)
-                
-        except Exception as e:
-            logger.error(f"Erreur commande create: {e}", exc_info=True)
-            await message.reply(f"❌ **Erreur interne:** `{str(e)[:100]}`", parse_mode=enums.ParseMode.MARKDOWN)
-    
-    # =========================================================================
-    # COMMANDE ADDF (ADD FOLDER)
-    # =========================================================================
-    
-    @app.on_message(filters.command("addf") & filters.user(ADMIN_IDS))
-    async def add_subfolder_command(client: Client, message: Message):
-        """Commande /addf - Créer un sous-dossier"""
-        try:
-            command_parts = message.text.split(maxsplit=1)
-            
-            if len(command_parts) < 2:
-                await message.reply(
-                    "❌ **Usage incorrect**\\n\\n"
-                    "Utilisez: `/addf <dossier_parent>`\\n"
-                    "Exemple: `/addf Stranger Things`\\n\\n"
-                    "Le bot vous demandera ensuite le nom du sous-dossier.",
-                    parse_mode=enums.ParseMode.MARKDOWN
-                )
-                return
-            
-            parent_name = command_parts[1].strip()
-            
-            # Rechercher le dossier parent
-            parents = supabase_manager.get_folder_by_name(parent_name, parent_id=None)
-            
-            if not parents:
-                # Recherche fuzzy pour suggestion
-                all_folders = supabase_manager.get_all_folders(parent_id='null')
-                all_names = [f['folder_name'] for f in all_folders]
-                suggestions = fuzzy_search(parent_name, all_names, limit=3)
-                
-                if suggestions:
-                    buttons = [
-                        [InlineKeyboardButton(f"📁 {name}", callback_data=f"select_parent:{name}")]
-                        for name in suggestions
-                    ]
-                    
-                    await message.reply(
-                        f"❌ Dossier `{escape_markdown(parent_name)}` introuvable.\\n\\n"
-                        f"🔍 **Vouliez-vous dire:**",
-                        reply_markup=InlineKeyboardMarkup(buttons),
-                        parse_mode=enums.ParseMode.MARKDOWN
-                    )
-                else:
-                    await message.reply(
-                        f"❌ Dossier `{escape_markdown(parent_name)}` introuvable.\\n\\n"
-                        f"Utilisez `/docs` pour voir la liste des dossiers.",
-                        parse_mode=enums.ParseMode.MARKDOWN
-                    )
-                return
-            
-            # Si plusieurs correspondances exactes (peu probable mais possible)
-            if len(parents) > 1:
-                buttons = [
-                    [InlineKeyboardButton(f"📁 {p['folder_name']} (ID: {p['id'][:8]}...)", 
-                                        callback_data=f"select_parent_id:{p['id']}")]
-                    for p in parents[:5]
-                ]
-                
-                await message.reply(
-                    "🔍 **Plusieurs dossiers trouvés:**\\n"
-                    "Sélectionnez le bon:",
-                    reply_markup=InlineKeyboardMarkup(buttons),
-                    parse_mode=enums.ParseMode.MARKDOWN
-                )
-                return
-            
-            parent = parents[0]
-            
-            # Créer la session pour demander le nom du sous-dossier
-            session_manager.set(message.from_user.id, {
-                'mode': 'creating_subfolder',
-                'parent_id': parent['id'],
-                'parent_name': parent['folder_name'],
-                'step': 'waiting_for_name'
-            })
-            
-            await message.reply(
-                f"📂 **Dossier parent sélectionné:**\\n"
-                f"`{escape_markdown(parent['folder_name'])}`\\n\\n"
-                f"💬 **Envoyez maintenant le nom du sous-dossier:**\\n"
-                f"Exemples:\\n"
-                f"• `Saison 1`\\n"
-                f"• `Épisodes spéciaux`\\n"
-                f"• `Partie 1`\\n\\n"
-                f"❌ Envoyez `/cancel` pour annuler",
-                parse_mode=enums.ParseMode.MARKDOWN
-            )
-            
-        except Exception as e:
-            logger.error(f"Erreur commande addf: {e}", exc_info=True)
-            await message.reply(f"❌ **Erreur interne:** `{str(e)[:100]}`", parse_mode=enums.ParseMode.MARKDOWN)
-    
-    # =========================================================================
-    # COMMANDE ADD (MODE AJOUT VIDÉOS)
-    # =========================================================================
-    
-    @app.on_message(filters.command("add") & filters.user(ADMIN_IDS))
-    async def add_files_command(client: Client, message: Message):
-        """Commande /add - Activer le mode ajout de fichiers"""
-        try:
-            command_parts = message.text.split(maxsplit=1)
-            
-            if len(command_parts) < 2:
-                await message.reply(
-                    "❌ **Usage incorrect**\\n\\n"
-                    "Utilisez: `/add <chemin>`\\n\\n"
-                    "**Formats acceptés:**\\n"
-                    "• `/add Dossier` (dossier racine)\\n"
-                    "• `/add Parent/Sous-dossier` (chemin complet)\\n\\n"
-                    "**Exemples:**\\n"
-                    "• `/add Breaking Bad`\\n"
-                    "• `/add Breaking Bad/Saison 1`",
-                    parse_mode=enums.ParseMode.MARKDOWN
-                )
-                return
-            
-            path = command_parts[1].strip()
-            parent_name, subfolder_name = parse_folder_path(path)
-            
-            if not parent_name:
-                await message.reply("❌ Chemin invalide", parse_mode=enums.ParseMode.MARKDOWN)
-                return
-            
-            # Rechercher le dossier parent
-            parents = supabase_manager.get_folder_by_name(parent_name, parent_id=None)
-            
-            if not parents:
-                await message.reply(
-                    f"❌ Dossier `{escape_markdown(parent_name)}` introuvable.\\n"
-                    f"Créez-le d'abord avec `/create {escape_markdown(parent_name)}`",
-                    parse_mode=enums.ParseMode.MARKDOWN
-                )
-                return
-            
-            parent = parents[0]
-            target_folder = parent
-            
-            # Si sous-dossier spécifié, le rechercher
-            if subfolder_name:
-                subfolders = supabase_manager.get_subfolders(parent['id'])
-                subfolder = next(
-                    (s for s in subfolders if s['folder_name'].lower() == subfolder_name.lower()),
-                    None
-                )
-                
-                if not subfolder:
-                    # Suggestions de sous-dossiers existants
-                    sub_names = [s['folder_name'] for s in subfolders]
-                    suggestions = fuzzy_search(subfolder_name, sub_names, limit=3)
-                    
-                    if suggestions:
-                        buttons = [
-                            [InlineKeyboardButton(f"📁 {name}", 
-                                                callback_data=f"select_subfolder:{parent['id']}:{name}")]
-                            for name in suggestions
-                        ]
-                        buttons.append([InlineKeyboardButton(
-                            "➕ Créer ce sous-dossier", 
-                            callback_data=f"create_subfolder:{parent['id']}:{subfolder_name}"
-                        )])
-                        
-                        await message.reply(
-                            f"❌ Sous-dossier `{escape_markdown(subfolder_name)}` introuvable dans `{escape_markdown(parent_name)}`.\\n\\n"
-                            f"🔍 **Existants:** {', '.join(suggestions)}\\n\\n"
-                            f"Ou créez-en un nouveau:",
-                            reply_markup=InlineKeyboardMarkup(buttons),
-                            parse_mode=enums.ParseMode.MARKDOWN
-                        )
-                        return
-                
-                target_folder = subfolder
-            
-            # Vérifier s'il y a déjà des vidéos dans ce dossier
-            existing_videos = supabase_manager.get_videos_by_folder(target_folder['id'])
-            
-            # Créer la session
-            session_manager.set(message.from_user.id, {
-                'mode': 'adding_files',
-                'folder_id': target_folder['id'],
-                'folder_path': path,
-                'folder_name': target_folder['folder_name'],
-                'files_added': 0,
-                'total_size': 0,
-                'errors': []
-            })
-            
-            status_text = (
-                f"✅ **Mode ajout activé**\\n\\n"
-                f"📁 **Dossier:** `{escape_markdown(path)}`\\n"
-            )
-            
-            if existing_videos:
-                status_text += f"📊 **Contenu existant:** {len(existing_videos)} vidéos\\n"
-            
-            status_text += (
-                f"\\n📤 **Envoyez vos fichiers vidéo maintenant**\\n\\n"
-                f"💡 **Conseils pour les captions:**\\n"
-                f"• `E01` ou `Ep 1` → Épisode 1\\n"
-                f"• `S01E05` → Saison 1, Épisode 5\\n"
-                f"• `S2 Ep 3 - Titre` → Avec titre personnalisé\\n\\n"
-                f"⏹️ **Terminer:** `/done`\\n"
-                f"❌ **Annuler:** `/cancel`"
-            )
-            
-            await message.reply(status_text, parse_mode=enums.ParseMode.MARKDOWN)
-            logger.info(f"Mode ajout activé par {message.from_user.id} dans {path}")
-            
-        except Exception as e:
-            logger.error(f"Erreur commande add: {e}", exc_info=True)
-            await message.reply(f"❌ **Erreur interne:** `{str(e)[:100]}`", parse_mode=enums.ParseMode.MARKDOWN)
-    
-    # =========================================================================
-    # COMMANDE DONE
-    # =========================================================================
-    
-    @app.on_message(filters.command("done") & filters.user(ADMIN_IDS))
-    async def done_command(client: Client, message: Message):
-        """Commande /done - Terminer le mode ajout"""
-        session = session_manager.get(message.from_user.id)
-        
-        if not session or session.get('mode') != 'adding_files':
-            await message.reply(
-                "⚠️ **Aucun mode ajout actif**\\n\\n"
-                "Utilisez d'abord `/add <dossier>` pour commencer.",
-                parse_mode=enums.ParseMode.MARKDOWN
-            )
+        # Vérification admin
+        if user_id not in settings.ADMIN_USER_IDS:
+            await message.reply(BOT_MESSAGES['error_not_admin'])
             return
         
-        # Récupérer les stats finales
-        folder_path = session.get('folder_path', 'Inconnu')
-        files_added = session.get('files_added', 0)
-        total_size = session.get('total_size', 0)
-        errors = session.get('errors', [])
-        
-        # Supprimer la session
-        session_manager.delete(message.from_user.id)
-        
-        # Message de confirmation
-        summary = (
-            f"✅ **Mode ajout terminé**\\n\\n"
-            f"📁 **Dossier:** `{escape_markdown(folder_path)}`\\n"
-            f"📊 **Résumé:**\\n"
-            f"  • Vidéos ajoutées: **{files_added}**\\n"
-            f"  • Taille totale: **{format_file_size(total_size)}**\\n"
-        )
-        
-        if errors:
-            summary += f"\\n⚠️ **Erreurs ({len(errors)}):**\\n"
-            for error in errors[:5]:  # Limiter à 5 erreurs
-                summary += f"  • `{escape_markdown(str(error)[:50])}`\\n"
-        
-        summary += (
-            f"\\n▶️ **Prochaines étapes:**\\n"
-            f"• `/view {escape_markdown(folder_path)}` pour voir le contenu\\n"
-            f"• `/add {escape_markdown(folder_path)}` pour ajouter plus de vidéos"
-        )
-        
-        await message.reply(summary, parse_mode=enums.ParseMode.MARKDOWN)
-        logger.info(f"Mode ajout terminé par {message.from_user.id}: {files_added} fichiers")
-    
-    # =========================================================================
-    # COMMANDE CANCEL
-    # =========================================================================
-    
-    @app.on_message(filters.command("cancel") & filters.user(ADMIN_IDS))
-    async def cancel_command(client: Client, message: Message):
-        """Commande /cancel - Annuler l'opération en cours"""
-        session = session_manager.get(message.from_user.id)
-        
-        if not session:
-            await message.reply("ℹ️ Aucune opération à annuler.", parse_mode=enums.ParseMode.MARKDOWN)
-            return
-        
-        mode = session.get('mode', 'inconnu')
-        session_manager.delete(message.from_user.id)
-        
-        mode_names = {
-            'adding_files': 'ajout de fichiers',
-            'creating_subfolder': 'création de sous-dossier',
-            'selecting_parent': 'sélection de dossier'
-        }
+        # Initialisation session
+        user_sessions[user_id] = {"state": "idle", "data": {}}
         
         await message.reply(
-            f"❌ **Opération annulée**\\n\\n"
-            f"Mode: {mode_names.get(mode, mode)}\\n"
-            f"Les données non sauvegardées ont été perdues.",
-            parse_mode=enums.ParseMode.MARKDOWN
+            BOT_MESSAGES['welcome'].format(username=message.from_user.username),
+            parse_mode=ParseMode.MARKDOWN
         )
     
     # =========================================================================
-    # COMMANDE VIEW
+    # COMMANDE /HELP
     # =========================================================================
+    @bot.on_message(filters.command("help") & filters.private)
+    async def help_command(client: Client, message: Message):
+        """Aide détaillée"""
+        help_text = """
+📚 **Guide d'utilisation ZeeXClub Bot**
+
+**Création de contenu:**
+
+1️⃣ **Créer un film/série**
+   `/create Nom du film`
+   Le bot recherche sur TMDB et propose les résultats.
+
+2️⃣ **Créer une saison** (séries uniquement)
+   `/addf`
+   Puis choisissez le show et le numéro de saison.
+
+3️⃣ **Ajouter un épisode**
+   `/add`
+   Envoyez la vidéo avec caption: `S01E01` ou `Épisode 1`
+   Le bot détecte automatiquement la saison et l'épisode.
+
+4️⃣ **Finaliser l'upload**
+   `/done`
+   Upload vers Filemoon et génération des liens.
+
+**Gestion:**
+
+• `/view [ID]` - Voir les détails d'un show
+• `/docs` - Lister tous les shows (avec pagination)
+• `/cancel` - Annuler l'opération en cours
+
+**Format des captions:**
+- `S01E01` ou `s1e1` → Saison 1, Épisode 1
+- `Épisode 5` → Saison en cours, Épisode 5
+- `2x15` → Saison 2, Épisode 15
+
+**Conseils:**
+- Les vidéos doivent être envoyées en tant que document ou vidéo
+- Attendez que chaque opération soit terminée avant de commencer la suivante
+- Utilisez /cancel si vous êtes bloqué
+        """
+        await message.reply(help_text, parse_mode=ParseMode.MARKDOWN)
     
-    @app.on_message(filters.command("view") & filters.user(ADMIN_IDS))
-    async def view_command(client: Client, message: Message):
-        """Commande /view - Voir le contenu d'un dossier"""
-        try:
-            command_parts = message.text.split(maxsplit=1)
-            
-            if len(command_parts) < 2:
-                await message.reply(
-                    "❌ **Usage incorrect**\\n\\n"
-                    "Utilisez: `/view <nom_dossier>`\\n"
-                    "Exemples:\\n"
-                    "• `/view Stranger Things`\\n"
-                    "• `/view Stranger Things/Saison 1`",
-                    parse_mode=enums.ParseMode.MARKDOWN
-                )
-                return
-            
-            search_query = command_parts[1].strip()
-            
-            # Si chemin complet (avec /), parser
-            if '/' in search_query:
-                parent_name, sub_name = parse_folder_path(search_query)
-                
-                # Trouver parent
-                parents = supabase_manager.get_folder_by_name(parent_name)
-                if not parents:
-                    await message.reply(f"❌ Dossier `{escape_markdown(parent_name)}` introuvable", parse_mode=enums.ParseMode.MARKDOWN)
-                    return
-                
-                parent = parents[0]
-                
-                # Trouver sous-dossier
-                subfolders = supabase_manager.get_subfolders(parent['id'])
-                subfolder = next(
-                    (s for s in subfolders if s['folder_name'].lower() == sub_name.lower()),
-                    None
-                )
-                
-                if not subfolder:
-                    await message.reply(
-                        f"❌ Sous-dossier `{escape_markdown(sub_name)}` introuvable dans `{escape_markdown(parent_name)}`",
-                        parse_mode=enums.ParseMode.MARKDOWN
-                    )
-                    return
-                
-                await display_folder_details(message, subfolder['id'])
-            else:
-                # Recherche simple
-                folders = supabase_manager.get_folder_by_name(search_query)
-                
-                if not folders:
-                    # Recherche fuzzy
-                    all_folders = supabase_manager.get_all_folders()
-                    all_names = list(set(f['folder_name'] for f in all_folders))
-                    suggestions = fuzzy_search(search_query, all_names, limit=5)
-                    
-                    if suggestions:
-                        buttons = [
-                            [InlineKeyboardButton(f"📁 {name}", callback_data=f"view_folder_by_name:{name}")]
-                            for name in suggestions
-                        ]
-                        
-                        await message.reply(
-                            f"❌ Dossier `{escape_markdown(search_query)}` introuvable.\\n\\n"
-                            f"🔍 **Suggestions:**",
-                            reply_markup=InlineKeyboardMarkup(buttons),
-                            parse_mode=enums.ParseMode.MARKDOWN
-                        )
-                    else:
-                        await message.reply(
-                            f"❌ Aucun dossier trouvé pour `{escape_markdown(search_query)}`",
-                            parse_mode=enums.ParseMode.MARKDOWN
-                        )
-                    return
-                
-                if len(folders) == 1:
-                    await display_folder_details(message, folders[0]['id'])
-                else:
-                    # Plusieurs dossiers avec même nom (différents parents)
-                    buttons = [
-                        [InlineKeyboardButton(
-                            f"📁 {f['folder_name']} (ID: {f['id'][:8]}...)", 
-                            callback_data=f"view_folder:{f['id']}"
-                        )]
-                        for f in folders[:5]
-                    ]
-                    
-                    await message.reply(
-                        f"🔍 **{len(folders)} dossiers trouvés:**\\n"
-                        f"Sélectionnez le bon:",
-                        reply_markup=InlineKeyboardMarkup(buttons),
-                        parse_mode=enums.ParseMode.MARKDOWN
-                    )
-                    
-        except Exception as e:
-            logger.error(f"Erreur commande view: {e}", exc_info=True)
-            await message.reply(f"❌ **Erreur interne:** `{str(e)[:100]}`", parse_mode=enums.ParseMode.MARKDOWN)
+    # =========================================================================
+    # COMMANDE /CANCEL
+    # =========================================================================
+    @bot.on_message(filters.command("cancel") & filters.private)
+    async def cancel_command(client: Client, message: Message):
+        """Annule l'opération en cours"""
+        user_id = message.from_user.id
+        user_sessions[user_id] = {"state": "idle", "data": {}}
+        await clear_bot_session(user_id)
+        await message.reply("❌ Opération annulée. Vous pouvez recommencer.")
     
-    async def display_folder_details(message: Message, folder_id: str):
-        """Affiche les détails d'un dossier"""
-        folder = supabase_manager.get_folder_by_id(folder_id)
-        if not folder:
-            await message.reply("❌ Dossier introuvable", parse_mode=enums.ParseMode.MARKDOWN)
+    # =========================================================================
+    # COMMANDE /CREATE
+    # =========================================================================
+    @bot.on_message(filters.command("create") & filters.private)
+    async def create_command(client: Client, message: Message):
+        """Crée un nouveau show via TMDB"""
+        user_id = message.from_user.id
+        
+        if not is_admin(user_id):
             return
         
-        videos = supabase_manager.get_videos_by_folder(folder_id)
+        # Récupération du nom
+        if len(message.command) < 2:
+            await message.reply(
+                "❌ Usage: `/create Nom du film ou série`\n"
+                "Exemple: `/create Avengers Endgame`",
+                parse_mode=ParseMode.MARKDOWN
+            )
+            return
         
-        # Construire le message
-        header = f"📁 **{escape_markdown(folder['folder_name'])}**\\n\\n"
+        query = " ".join(message.command[1:])
+        await message.reply(f"🔍 Recherche de *{query}* sur TMDB...", parse_mode=ParseMode.MARKDOWN)
         
-        if videos:
-            header += create_video_summary(videos)
-        else:
-            header += "📂 **Dossier vide**\\n\\n"
-            header += "Utilisez `/add` pour ajouter des vidéos."
-        
-        # Boutons d'action
-        buttons = []
-        
-        # Vérifier s'il y a des sous-dossiers
-        subfolders = supabase_manager.get_subfolders(folder_id)
-        if subfolders:
-            buttons.append([InlineKeyboardButton(
-                f"📂 Voir les {len(subfolders)} sous-dossiers", 
-                callback_data=f"list_subfolders:{folder_id}"
-            )])
-        
-        buttons.append([
-            InlineKeyboardButton("➕ Ajouter des vidéos", callback_data=f"add_to_folder:{folder_id}"),
-            InlineKeyboardButton("🗑️ Supprimer", callback_data=f"delete_folder:{folder_id}")
-        ])
-        
-        await message.reply(header, reply_markup=InlineKeyboardMarkup(buttons), parse_mode=enums.ParseMode.MARKDOWN)
-    
-    # =========================================================================
-    # COMMANDE DOCS (LISTE DES DOSSIERS)
-    # =========================================================================
-    
-    @app.on_message(filters.command("docs") & filters.user(ADMIN_IDS))
-    async def docs_command(client: Client, message: Message):
-        """Commande /docs - Lister tous les dossiers"""
         try:
-            folders = supabase_manager.get_all_folders(parent_id='null')
+            # Recherche film ET série
+            movie_results = await search_tmdb(query, "movie")
+            tv_results = await search_tmdb(query, "tv")
             
-            if not folders:
-                await message.reply(
-                    "📂 **Aucun dossier créé**\\n\\n"
-                    "Commencez par créer un dossier:\\n"
-                    "`/create Mon Film`",
-                    parse_mode=enums.ParseMode.MARKDOWN
-                )
+            all_results = []
+            
+            # Formatage résultats films
+            for item in movie_results[:5]:
+                all_results.append({
+                    "tmdb_id": item["tmdb_id"],
+                    "title": item["title"],
+                    "year": item.get("release_date", "")[:4] if item.get("release_date") else "N/A",
+                    "type": "movie",
+                    "overview": item.get("overview", "")[:100] + "..." if len(item.get("overview", "")) > 100 else item.get("overview", ""),
+                    "poster": item.get("poster_path", "")
+                })
+            
+            # Formatage résultats séries
+            for item in tv_results[:5]:
+                all_results.append({
+                    "tmdb_id": item["tmdb_id"],
+                    "title": item["title"],
+                    "year": item.get("release_date", "")[:4] if item.get("release_date") else "N/A",
+                    "type": "series",
+                    "overview": item.get("overview", "")[:100] + "..." if len(item.get("overview", "")) > 100 else item.get("overview", ""),
+                    "poster": item.get("poster_path", "")
+                })
+            
+            if not all_results:
+                await message.reply("❌ Aucun résultat trouvé sur TMDB.")
                 return
             
-            total_videos = sum(f.get('videos', [{}])[0].get('count', 0) for f in folders)
+            # Stockage des résultats en session
+            user_sessions[user_id] = {
+                "state": "selecting_show",
+                "results": all_results,
+                "data": {}
+            }
             
-            lines = [
-                f"📚 **LISTE DES DOSSIERS** ({len(folders)} total, {total_videos} vidéos)\\n",
-                "┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓"
-            ]
-            
-            for i, folder in enumerate(folders[:20], 1):  # Limiter à 20
-                video_count = folder.get('videos', [{}])[0].get('count', 0)
-                subfolder_count = len(supabase_manager.get_subfolders(folder['id']))
-                
-                lines.append(
-                    f"┃ {i:2d}. **{escape_markdown(folder['folder_name'][:30])}**"
-                    f"{' ' * (30 - len(folder['folder_name'][:30]))}┃"
-                )
-                lines.append(
-                    f"┃    📂 {subfolder_count} sous-dossiers | 🎬 {video_count} vidéos"
-                    f"{' ' * (15 - len(str(subfolder_count)) - len(str(video_count)))}┃"
-                )
-            
-            if len(folders) > 20:
-                lines.append(f"┃ ... et {len(folders) - 20} autres dossiers")
-            
-            lines.append("┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛")
-            lines.append("\\n💡 Cliquez sur un dossier pour voir les détails")
-            
-            # Créer des boutons pour les 10 premiers dossiers
+            # Construction des boutons
             buttons = []
-            for folder in folders[:10]:
-                video_count = folder.get('videos', [{}])[0].get('count', 0)
-                buttons.append([InlineKeyboardButton(
-                    f"📁 {folder['folder_name'][:25]} ({video_count} 🎬)",
-                    callback_data=f"view_folder:{folder['id']}"
-                )])
+            for idx, result in enumerate(all_results[:6]):  # Max 6 résultats
+                type_emoji = "🎬" if result["type"] == "movie" else "📺"
+                btn_text = f"{type_emoji} {result['title']} ({result['year']})"
+                buttons.append([InlineKeyboardButton(btn_text, callback_data=f"create_select_{idx}")])
+            
+            buttons.append([InlineKeyboardButton("❌ Annuler", callback_data="create_cancel")])
+            
+            # Envoi du message avec résultats
+            text = BOT_MESSAGES['create_multiple'] + "\n\n"
+            for idx, r in enumerate(all_results[:6], 1):
+                emoji = "🎬" if r["type"] == "movie" else "📺"
+                text += f"{idx}. {emoji} *{r['title']}* ({r['year']})\n"
+                text += f"   _{r['overview'][:80]}..._\n\n"
             
             await message.reply(
-                "\\n".join(lines),
-                reply_markup=InlineKeyboardMarkup(buttons) if buttons else None,
-                parse_mode=enums.ParseMode.MARKDOWN
+                text,
+                reply_markup=InlineKeyboardMarkup(buttons),
+                parse_mode=ParseMode.MARKDOWN
             )
             
         except Exception as e:
-            logger.error(f"Erreur commande docs: {e}", exc_info=True)
-            await message.reply(f"❌ **Erreur interne:** `{str(e)[:100]}`", parse_mode=enums.ParseMode.MARKDOWN)
+            logger.error(f"Erreur commande create: {e}")
+            await message.reply(f"❌ Erreur: {str(e)}")
     
     # =========================================================================
-    # COMMANDE STATS
+    # COMMANDE /ADD (Ajout épisode)
     # =========================================================================
+    @bot.on_message(filters.command("add") & filters.private)
+    async def add_command(client: Client, message: Message):
+        """Prépare l'ajout d'un épisode"""
+        user_id = message.from_user.id
+        
+        if not is_admin(user_id):
+            return
+        
+        # Vérification qu'un show est sélectionné
+        session = user_sessions.get(user_id, {})
+        current_show = session.get("data", {}).get("current_show")
+        
+        if not current_show:
+            # Demander de sélectionner d'abord un show
+            await list_shows_for_selection(client, message, "add_episode")
+            return
+        
+        # Mise à jour état
+        user_sessions[user_id]["state"] = "waiting_video"
+        
+        await message.reply(
+            f"📤 Envoi d'épisode pour: *{current_show['title']}*\n\n"
+            f"Envoyez la vidéo avec caption indiquant la saison et épisode:\n"
+            f"• `S01E01` ou `s1e1`\n"
+            f"• `Épisode 5`\n"
+            f"• `2x15` (saison 2, ép 15)\n\n"
+            f"_Le fichier sera stocké sur Telegram en attendant l'upload Filemoon._",
+            parse_mode=ParseMode.MARKDOWN
+        )
     
-    @app.on_message(filters.command("stats") & filters.user(ADMIN_IDS))
-    async def stats_command(client: Client, message: Message):
-        """Commande /stats - Statistiques du système"""
+    # =========================================================================
+    # COMMANDE /ADDF (Création saison/dossier)
+    # =========================================================================
+    @bot.on_message(filters.command("addf") & filters.private)
+    async def addf_command(client: Client, message: Message):
+        """Crée un sous-dossier/saison"""
+        user_id = message.from_user.id
+        
+        if not is_admin(user_id):
+            return
+        
+        session = user_sessions.get(user_id, {})
+        current_show = session.get("data", {}).get("current_show")
+        
+        if not current_show:
+            await list_shows_for_selection(client, message, "create_season")
+            return
+        
+        if current_show["type"] == "movie":
+            await message.reply("❌ Les films n'ont pas de saisons!")
+            return
+        
+        # Récupération des saisons existantes
+        from database.queries import get_seasons_by_show
+        seasons = await get_seasons_by_show(current_show["id"])
+        next_season = len(seasons) + 1
+        
+        # Proposition de création
+        buttons = [
+            [InlineKeyboardButton(f"Créer Saison {next_season}", callback_data=f"season_create_{next_season}")],
+            [InlineKeyboardButton("Autre numéro...", callback_data="season_custom")],
+            [InlineKeyboardButton("❌ Annuler", callback_data="season_cancel")]
+        ]
+        
+        await message.reply(
+            f"📁 Gestion des saisons pour *{current_show['title']}*\n\n"
+            f"Saisons existantes: {len(seasons)}\n"
+            f"Quelle action souhaitez-vous?",
+            reply_markup=InlineKeyboardMarkup(buttons),
+            parse_mode=ParseMode.MARKDOWN
+        )
+    
+    # =========================================================================
+    # COMMANDE /VIEW
+    # =========================================================================
+    @bot.on_message(filters.command("view") & filters.private)
+    async def view_command(client: Client, message: Message):
+        """Affiche les détails d'un show"""
+        user_id = message.from_user.id
+        
+        if not is_admin(user_id):
+            return
+        
+        if len(message.command) < 2:
+            # Lister pour sélection
+            await list_shows_for_selection(client, message, "view_show")
+            return
+        
+        show_id = message.command[1]
+        await show_show_details(client, message, show_id)
+    
+    # =========================================================================
+    # COMMANDE /DOCS (Lister shows)
+    # =========================================================================
+    @bot.on_message(filters.command("docs") & filters.private)
+    async def docs_command(client: Client, message: Message):
+        """Liste tous les shows avec pagination"""
+        user_id = message.from_user.id
+        
+        if not is_admin(user_id):
+            return
+        
+        page = 1
+        if len(message.command) > 1 and message.command[1].isdigit():
+            page = int(message.command[1])
+        
+        await list_shows_paginated(client, message, page)
+    
+    # =========================================================================
+    # COMMANDE /DONE (Finalisation)
+    # =========================================================================
+    @bot.on_message(filters.command("done") & filters.private)
+    async def done_command(client: Client, message: Message):
+        """Finalise l'upload vers Filemoon"""
+        user_id = message.from_user.id
+        
+        if not is_admin(user_id):
+            return
+        
+        session = user_sessions.get(user_id, {})
+        pending_uploads = session.get("data", {}).get("pending_uploads", [])
+        
+        if not pending_uploads:
+            await message.reply(
+                "❌ Aucun upload en attente.\n"
+                "Utilisez d'abord /add pour ajouter des épisodes."
+            )
+            return
+        
+        await message.reply(f"🚀 Démarrage de l'upload Filemoon pour {len(pending_uploads)} fichier(s)...")
+        
+        # Traitement des uploads
+        for idx, upload_info in enumerate(pending_uploads, 1):
+            file_id = upload_info["file_id"]
+            episode_id = upload_info["episode_id"]
+            
+            progress_msg = await message.reply(f"⏳ Upload {idx}/{len(pending_uploads)}: Préparation...")
+            
+            try:
+                # Génération du lien de téléchargement Telegram
+                # Note: Dans l'implémentation réelle, il faudrait générer un lien
+                # temporaire ou utiliser le file_id pour l'upload remote
+                
+                # Simulation pour l'exemple - en prod, utiliser l'URL de notre API
+                telegram_url = f"https://api.telegram.org/file/bot{settings.TELEGRAM_BOT_TOKEN}/{file_id}"
+                
+                await progress_msg.edit_text(f"⏳ Upload {idx}/{len(pending_uploads)}: Envoi à Filemoon...")
+                
+                # Upload Filemoon
+                result = await upload_to_filemoon(telegram_url, title=upload_info.get("title", "Video"))
+                
+                if result["success"]:
+                    # Création de la source vidéo
+                    await create_video_source({
+                        "episode_id": episode_id,
+                        "server_name": "filemoon",
+                        "link": result["player_url"],
+                        "filemoon_code": result["file_code"],
+                        "quality": "HD",
+                        "is_active": True
+                    })
+                    
+                    await progress_msg.edit_text(
+                        f"✅ Upload terminé!\n"
+                        f"Code: `{result['file_code']}`\n"
+                        f"Lien: {result['player_url']}",
+                        parse_mode=ParseMode.MARKDOWN
+                    )
+                else:
+                    await progress_msg.edit_text(f"❌ Échec: {result.get('error', 'Erreur inconnue')}")
+                
+                await asyncio.sleep(1)  # Éviter le rate limit
+                
+            except Exception as e:
+                logger.error(f"Erreur upload {file_id}: {e}")
+                await progress_msg.edit_text(f"❌ Erreur upload: {str(e)}")
+        
+        # Nettoyage
+        user_sessions[user_id]["data"]["pending_uploads"] = []
+        await message.reply("✅ Tous les uploads sont terminés!")
+    
+    # =========================================================================
+    # HANDLER MESSAGES VIDÉO/DOCUMENT (Pour /add)
+    # =========================================================================
+    @bot.on_message(
+        (filters.video | filters.document) & 
+        filters.private & 
+        filters.create(lambda _, __, msg: is_waiting_video(msg.from_user.id))
+    )
+    async def handle_video_upload(client: Client, message: Message):
+        """Gère la réception d'une vidéo pour ajout d'épisode"""
+        user_id = message.from_user.id
+        session = user_sessions.get(user_id, {})
+        
+        current_show = session["data"].get("current_show")
+        current_season = session["data"].get("current_season")
+        
+        if not current_show:
+            await message.reply("❌ Erreur: Aucun show sélectionné. Utilisez /create d'abord.")
+            return
+        
+        # Détection du fichier
+        if message.video:
+            file_id = message.video.file_id
+            file_size = message.video.file_size
+            duration = message.video.duration
+            mime_type = message.video.mime_type
+        elif message.document:
+            file_id = message.document.file_id
+            file_size = message.document.file_size
+            mime_type = message.document.mime_type
+            duration = None
+        else:
+            await message.reply("❌ Format non supporté.")
+            return
+        
+        # Parsing de la caption pour SxxExx
+        caption = message.caption or ""
+        season_num, episode_num = parse_season_episode(caption)
+        
+        if season_num is None:
+            season_num = current_season["season_number"] if current_season else 1
+        
+        if episode_num is None:
+            await message.reply(
+                "❌ Impossible de détecter le numéro d'épisode.\n"
+                "Veuillez inclure dans la caption:\n"
+                "• `S01E05` pour Saison 1 Épisode 5\n"
+                "• `Épisode 3` pour l'épisode 3 de la saison en cours"
+            )
+            return
+        
         try:
-            # Récupérer les stats
-            folders = supabase_manager.get_all_folders()
-            total_folders = len(folders)
+            # Récupération ou création de la saison
+            from database.queries import get_season_by_number, create_season
             
-            # Compter les sous-dossiers
-            total_subfolders = 0
-            for folder in folders:
-                total_subfolders += len(supabase_manager.get_subfolders(folder['id']))
+            season = await get_season_by_number(current_show["id"], season_num)
+            if not season:
+                # Création auto de la saison
+                season = await create_season({
+                    "show_id": current_show["id"],
+                    "season_number": season_num,
+                    "name": f"Saison {season_num}"
+                })
+                await message.reply(f"📁 Saison {season_num} créée automatiquement.")
             
-            # Stats sessions
-            session_stats = session_manager.get_stats()
+            # Création de l'épisode
+            episode = await create_episode({
+                "season_id": season["id"],
+                "episode_number": episode_num,
+                "title": caption if caption and not caption.startswith("S") else f"Épisode {episode_num}"
+            })
             
-            stats_text = f"""
-📊 **STATISTIQUES ZeeXClub**
-
-┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
-┃  📁 CONTENU                     ┃
-┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
-• Dossiers racine: **{total_folders}**
-• Sous-dossiers: **{total_subfolders}**
-• Total dossiers: **{total_folders + total_subfolders}**
-
-┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
-┃  🤖 BOT                         ┃
-┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
-• Sessions actives: **{session_stats['total']}**
-  - Mode ajout: {session_stats['adding_files']}
-  - Création sous-dossier: {session_stats['creating_subfolder']}
-  - Autres: {session_stats['other']}
-
-┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
-┃  👤 ADMIN                       ┃
-┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
-• Votre ID: `{message.from_user.id}`
-            """
+            # Création source Telegram (backup)
+            await create_video_source({
+                "episode_id": episode["id"],
+                "server_name": "telegram",
+                "link": f"/api/stream/telegram/{file_id}",
+                "file_id": file_id,
+                "file_size": file_size,
+                "duration": duration,
+                "quality": "HD",
+                "is_active": True
+            })
             
-            await message.reply(stats_text, parse_mode=enums.ParseMode.MARKDOWN)
+            # Ajout à la liste d'upload Filemoon en attente
+            if "pending_uploads" not in user_sessions[user_id]["data"]:
+                user_sessions[user_id]["data"]["pending_uploads"] = []
+            
+            user_sessions[user_id]["data"]["pending_uploads"].append({
+                "file_id": file_id,
+                "episode_id": episode["id"],
+                "title": f"{current_show['title']} S{season_num:02d}E{episode_num:02d}"
+            })
+            
+            # Mise à jour de la saison courante
+            user_sessions[user_id]["data"]["current_season"] = season
+            
+            await message.reply(
+                f"✅ Épisode ajouté!\n\n"
+                f"📺 *{current_show['title']}*\n"
+                f"📁 Saison {season_num}\n"
+                f"🎬 Épisode {episode_num}\n"
+                f"💾 File ID: `{file_id}`\n\n"
+                f"Envoyez d'autres épisodes ou tapez /done pour uploader vers Filemoon.",
+                parse_mode=ParseMode.MARKDOWN
+            )
             
         except Exception as e:
-            logger.error(f"Erreur commande stats: {e}", exc_info=True)
-            await message.reply(f"❌ **Erreur interne:** `{str(e)[:100]}`", parse_mode=enums.ParseMode.MARKDOWN)
+            logger.error(f"Erreur handle_video: {e}")
+            await message.reply(f"❌ Erreur: {str(e)}")
+
+
+def setup_handlers(bot: Client):
+    """
+    Configure les handlers de callbacks
+    """
+    
+    @bot.on_callback_query()
+    async def handle_callback(client: Client, callback: CallbackQuery):
+        """Gère tous les callbacks inline"""
+        user_id = callback.from_user.id
+        data = callback.data
+        
+        try:
+            # Création de show - sélection résultat
+            if data.startswith("create_select_"):
+                idx = int(data.split("_")[-1])
+                await process_show_selection(client, callback, user_id, idx)
+            
+            elif data == "create_cancel":
+                await callback.message.edit_text("❌ Création annulée.")
+                user_sessions[user_id] = {"state": "idle", "data": {}}
+            
+            # Sélection de show pour différentes actions
+            elif data.startswith("select_show_"):
+                show_id = data.replace("select_show_", "")
+                action = user_sessions.get(user_id, {}).get("action")
+                await process_show_selection_by_id(client, callback, user_id, show_id, action)
+            
+            # Gestion saisons
+            elif data.startswith("season_create_"):
+                season_num = int(data.split("_")[-1])
+                await process_season_creation(client, callback, user_id, season_num)
+            
+            elif data == "season_custom":
+                await callback.message.edit_text(
+                    "Envoyez le numéro de saison souhaité:\n"
+                    "Exemple: `3` pour la saison 3",
+                    parse_mode=ParseMode.MARKDOWN
+                )
+                user_sessions[user_id]["state"] = "waiting_season_number"
+            
+            elif data == "season_cancel":
+                await callback.message.edit_text("❌ Opération annulée.")
+            
+            # Pagination docs
+            elif data.startswith("docs_page_"):
+                page = int(data.split("_")[-1])
+                await update_shows_list(client, callback, page)
+            
+            await callback.answer()
+            
+        except Exception as e:
+            logger.error(f"Erreur callback: {e}")
+            await callback.answer("❌ Erreur", show_alert=True)
+
+
+# ============================================================================
+# FONCTIONS UTILITAIRES
+# ============================================================================
+
+def is_admin(user_id: int) -> bool:
+    """Vérifie si l'utilisateur est admin"""
+    return user_id in settings.ADMIN_USER_IDS
+
+
+def is_waiting_video(user_id: int) -> bool:
+    """Vérifie si l'utilisateur attend une vidéo"""
+    return user_sessions.get(user_id, {}).get("state") == "waiting_video"
+
+
+def parse_season_episode(caption: str) -> tuple:
+    """
+    Parse la caption pour extraire saison et épisode
+    
+    Returns:
+        (season, episode) ou (None, None) si non trouvé
+    """
+    if not caption:
+        return None, None
+    
+    # Patterns de recherche
+    patterns = [
+        (r'[Ss](\d+)[Ee](\d+)', True),  # S01E01
+        (r'(\d+)[xX](\d+)', True),       # 1x01
+        (r'[Ss]aison\s*(\d+).*?[ÉEe]pisode\s*(\d+)', True),  # Saison 1 Episode 1
+        (r'[ÉEe]pisode\s*(\d+)', False), # Épisode 5 (saison 1 par défaut)
+    ]
+    
+    for pattern, has_season in patterns:
+        match = re.search(pattern, caption)
+        if match:
+            if has_season:
+                return int(match.group(1)), int(match.group(2))
+            else:
+                return 1, int(match.group(1))
+    
+    return None, None
+
+
+async def process_show_selection(client: Client, callback: CallbackQuery, user_id: int, idx: int):
+    """Traite la sélection d'un show depuis la recherche TMDB"""
+    session = user_sessions.get(user_id, {})
+    results = session.get("results", [])
+    
+    if idx >= len(results):
+        await callback.message.edit_text("❌ Résultat invalide.")
+        return
+    
+    selected = results[idx]
+    
+    await callback.message.edit_text(f"⏳ Récupération des détails TMDB...")
+    
+    try:
+        # Récupération détails complets
+        details = await get_tmdb_details(selected["tmdb_id"], selected["type"])
+        
+        if not details:
+            await callback.message.edit_text("❌ Erreur récupération détails TMDB.")
+            return
+        
+        # Création en base
+        show_data = {
+            "tmdb_id": details["tmdb_id"],
+            "title": details["title"],
+            "type": selected["type"],
+            "overview": details["overview"],
+            "poster_path": details["poster_path"],
+            "backdrop_path": details["backdrop_path"],
+            "release_date": details["release_date"],
+            "genres": details["genres"],
+            "runtime": details["runtime"],
+            "rating": details["vote_average"]
+        }
+        
+        created_show = await create_show(show_data)
+        
+        # Création saison 0 pour films ou saison 1 pour séries si besoin
+        if selected["type"] == "movie":
+            # Pour les films, créer une saison "spéciale" 0
+            await create_season({
+                "show_id": created_show["id"],
+                "season_number": 0,
+                "name": "Film"
+            })
+        else:
+            # Pour les séries, créer la saison 1 par défaut
+            await create_season({
+                "show_id": created_show["id"],
+                "season_number": 1,
+                "name": "Saison 1"
+            })
+        
+        # Mise à jour session
+        user_sessions[user_id] = {
+            "state": "idle",
+            "data": {
+                "current_show": created_show
+            }
+        }
+        
+        # Message de confirmation
+        poster_url = f"https://image.tmdb.org/t/p/w500{details['poster_path']}" if details['poster_path'] else None
+        
+        text = (
+            f"✅ *Show créé avec succès!*\n\n"
+            f"🎬 *{created_show['title']}*\n"
+            f"📅 {details.get('release_date', 'N/A')}\n"
+            f"⭐ {details.get('vote_average', 'N/A')}/10\n"
+            f"🎭 {', '.join(details['genres'][:3])}\n"
+            f"📝 _{details['overview'][:200]}..._\n\n"
+            f"ID: `{created_show['id']}`\n\n"
+            f"Prochaines étapes:\n"
+            f"• `/add` - Ajouter des épisodes\n"
+            f"• `/addf` - Gérer les saisons\n"
+            f"• `/view` - Voir les détails"
+        )
+        
+        if poster_url:
+            await callback.message.reply_photo(poster_url, caption=text, parse_mode=ParseMode.MARKDOWN)
+            await callback.message.delete()
+        else:
+            await callback.message.edit_text(text, parse_mode=ParseMode.MARKDOWN)
+        
+    except Exception as e:
+        logger.error(f"Erreur process_show_selection: {e}")
+        await callback.message.edit_text(f"❌ Erreur: {str(e)}")
+
+
+async def list_shows_for_selection(client: Client, message: Message, action: str):
+    """Affiche la liste des shows pour sélection"""
+    try:
+        shows, _ = await get_all_shows(limit=20)
+        
+        if not shows:
+            await message.reply("❌ Aucun show trouvé. Créez-en un avec /create")
+            return
+        
+        buttons = []
+        for show in shows:
+            emoji = "🎬" if show["type"] == "movie" else "📺"
+            btn_text = f"{emoji} {show['title']}"
+            buttons.append([InlineKeyboardButton(btn_text, callback_data=f"select_show_{show['id']}")])
+        
+        # Stockage de l'action en cours
+        user_id = message.from_user.id
+        if user_id not in user_sessions:
+            user_sessions[user_id] = {}
+        user_sessions[user_id]["action"] = action
+        
+        text = "📋 Sélectionnez un show:"
+        await message.reply(text, reply_markup=InlineKeyboardMarkup(buttons))
+        
+    except Exception as e:
+        logger.error(f"Erreur list_shows: {e}")
+        await message.reply(f"❌ Erreur: {str(e)}")
+
+
+async def process_show_selection_by_id(client: Client, callback: CallbackQuery, user_id: int, show_id: str, action: str):
+    """Traite la sélection d'un show par ID pour une action donnée"""
+    try:
+        show = await get_show_by_id(show_id)
+        if not show:
+            await callback.message.edit_text("❌ Show non trouvé.")
+            return
+        
+        # Mise à jour session
+        if user_id not in user_sessions:
+            user_sessions[user_id] = {"state": "idle", "data": {}}
+        
+        user_sessions[user_id]["data"]["current_show"] = show
+        
+        if action == "add_episode":
+            await callback.message.edit_text(
+                f"✅ Show sélectionné: *{show['title']}*\n\n"
+                f"Utilisez maintenant /add pour envoyer des épisodes.",
+                parse_mode=ParseMode.MARKDOWN
+            )
+        
+        elif action == "create_season":
+            # Rediriger vers la logique de création de saison
+            await callback.message.edit_text(
+                f"✅ Show sélectionné: *{show['title']}*\n\n"
+                f"Utilisez /addf pour créer une saison.",
+                parse_mode=ParseMode.MARKDOWN
+            )
+        
+        elif action == "view_show":
+            await show_show_details(client, callback.message, show_id, edit=True)
+        
+    except Exception as e:
+        logger.error(f"Erreur process_show_selection_by_id: {e}")
+        await callback.message.edit_text(f"❌ Erreur: {str(e)}")
+
+
+async def show_show_details(client: Client, message_or_callback, show_id: str, edit: bool = False):
+    """Affiche les détails d'un show"""
+    try:
+        from database.queries import get_seasons_by_show, get_episodes_by_season
+        
+        show = await get_show_by_id(show_id)
+        if not show:
+            text = "❌ Show non trouvé."
+            if edit:
+                await message_or_callback.edit_text(text)
+            else:
+                await message_or_callback.reply(text)
+            return
+        
+        # Récupération saisons et épisodes
+        seasons = await get_seasons_by_show(show_id)
+        total_episodes = 0
+        
+        seasons_info = []
+        for season in seasons:
+            episodes = await get_episodes_by_season(season["id"])
+            total_episodes += len(episodes)
+            seasons_info.append(f"Saison {season['season_number']}: {len(episodes)} ép.")
+        
+        # Construction du texte
+        text = (
+            f"📊 *{show['title']}*\n"
+            f"{'🎬 Film' if show['type'] == 'movie' else '📺 Série'}\n"
+            f"⭐ {show.get('rating', 'N/A')}/10\n"
+            f"📅 {show.get('release_date', 'N/A')}\n"
+            f"👁 {show.get('views', 0)} vues\n\n"
+            f"📝 _{show.get('overview', 'Pas de synopsis')[:300]}..._\n\n"
+            f"📁 *Saisons:* {len(seasons)}\n"
+            f"🎬 *Épisodes:* {total_episodes}\n"
+        )
+        
+        if seasons_info:
+            text += "\n" + "\n".join(seasons_info)
+        
+        text += f"\n\n🆔 `{show_id}`"
+        
+        if edit:
+            await message_or_callback.edit_text(text, parse_mode=ParseMode.MARKDOWN)
+        else:
+            await message_or_callback.reply(text, parse_mode=ParseMode.MARKDOWN)
+        
+    except Exception as e:
+        logger.error(f"Erreur show_details: {e}")
+        text = f"❌ Erreur: {str(e)}"
+        if edit:
+            await message_or_callback.edit_text(text)
+        else:
+            await message_or_callback.reply(text)
+
+
+async def list_shows_paginated(client: Client, message: Message, page: int = 1):
+    """Liste les shows avec pagination"""
+    try:
+        limit = 10
+        offset = (page - 1) * limit
+        
+        shows, total = await get_all_shows(limit=limit, offset=offset)
+        total_pages = (total + limit - 1) // limit
+        
+        if not shows:
+            await message.reply("📭 Aucun show trouvé.")
+            return
+        
+        text = f"📋 *Liste des shows* (Page {page}/{total_pages})\n\n"
+        
+        for idx, show in enumerate(shows, offset + 1):
+            emoji = "🎬" if show["type"] == "movie" else "📺"
+            text += f"{idx}. {emoji} *{show['title']}*\n"
+            text += f"   👁 {show.get('views', 0)} vues | 🆔 `{show['id'][:8]}...`\n\n"
+        
+        # Boutons pagination
+        buttons = []
+        nav_buttons = []
+        
+        if page > 1:
+            nav_buttons.append(InlineKeyboardButton("⬅️ Précédent", callback_data=f"docs_page_{page-1}"))
+        if page < total_pages:
+            nav_buttons.append(InlineKeyboardButton("Suivant ➡️", callback_data=f"docs_page_{page+1}"))
+        
+        if nav_buttons:
+            buttons.append(nav_buttons)
+        
+        await message.reply(text, reply_markup=InlineKeyboardMarkup(buttons) if buttons else None, parse_mode=ParseMode.MARKDOWN)
+        
+    except Exception as e:
+        logger.error(f"Erreur list_shows_paginated: {e}")
+        await message.reply(f"❌ Erreur: {str(e)}")
+
+
+async def update_shows_list(client: Client, callback: CallbackQuery, page: int):
+    """Met à jour la liste paginée"""
+    try:
+        limit = 10
+        offset = (page - 1) * limit
+        
+        shows, total = await get_all_shows(limit=limit, offset=offset)
+        total_pages = (total + limit - 1) // limit
+        
+        text = f"📋 *Liste des shows* (Page {page}/{total_pages})\n\n"
+        
+        for idx, show in enumerate(shows, offset + 1):
+            emoji = "🎬" if show["type"] == "movie" else "📺"
+            text += f"{idx}. {emoji} *{show['title']}*\n"
+            text += f"   👁 {show.get('views', 0)} vues | 🆔 `{show['id'][:8]}...`\n\n"
+        
+        buttons = []
+        nav_buttons = []
+        
+        if page > 1:
+            nav_buttons.append(InlineKeyboardButton("⬅️ Précédent", callback_data=f"docs_page_{page-1}"))
+        if page < total_pages:
+            nav_buttons.append(InlineKeyboardButton("Suivant ➡️", callback_data=f"docs_page_{page+1}"))
+        
+        if nav_buttons:
+            buttons.append(nav_buttons)
+        
+        await callback.message.edit_text(
+            text, 
+            reply_markup=InlineKeyboardMarkup(buttons) if buttons else None,
+            parse_mode=ParseMode.MARKDOWN
+        )
+        
+    except Exception as e:
+        logger.error(f"Erreur update_shows_list: {e}")
+        await callback.answer("❌ Erreur", show_alert=True)
+
+
+async def process_season_creation(client: Client, callback: CallbackQuery, user_id: int, season_num: int):
+    """Crée une nouvelle saison"""
+    try:
+        session = user_sessions.get(user_id, {})
+        current_show = session.get("data", {}).get("current_show")
+        
+        if not current_show:
+            await callback.message.edit_text("❌ Erreur: Aucun show sélectionné.")
+            return
+        
+        # Vérification existence
+        existing = await get_season_by_number(current_show["id"], season_num)
+        if existing:
+            await callback.message.edit_text(f"❌ La saison {season_num} existe déjà!")
+            return
+        
+        # Création
+        season = await create_season({
+            "show_id": current_show["id"],
+            "season_number": season_num,
+            "name": f"Saison {season_num}"
+        })
+        
+        # Mise à jour session
+        user_sessions[user_id]["data"]["current_season"] = season
+        
+        await callback.message.edit_text(
+            f"✅ *Saison {season_num} créée!*\n\n"
+            f"Vous pouvez maintenant ajouter des épisodes avec /add",
+            parse_mode=ParseMode.MARKDOWN
+        )
+        
+    except Exception as e:
+        logger.error(f"Erreur process_season_creation: {e}")
+        await callback.message.edit_text(f"❌ Erreur: {str(e)}")

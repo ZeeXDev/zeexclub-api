@@ -3,792 +3,202 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ZeeXClub - Streaming Premium</title>
+    <title>ZeeXClub - Streaming HD</title>
+    <meta name="description" content="ZeeXClub - Vos films et séries en streaming HD">
+    
+    <!-- Favicon -->
+    <link rel="icon" type="image/x-icon" href="/img/favicon.ico">
+    
+    <!-- CSS -->
+    <link rel="stylesheet" href="css/main.css">
+    <link rel="stylesheet" href="css/responsive.css">
+    
+    <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Bebas+Neue&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="css/main.css">
-    <link rel="stylesheet" href="css/bottom-nav.css">
-    <link rel="stylesheet" href="css/responsive.css">
-    <style>
-        /* Hero Dynamic Loading Animation */
-        .hero-loading {
-            position: absolute;
-            inset: 0;
-            background: linear-gradient(90deg, #1a1a1a 25%, #2a2a2a 50%, #1a1a1a 75%);
-            background-size: 200% 100%;
-            animation: shimmer 1.5s infinite;
-            z-index: 5;
-        }
-        
-        @keyframes shimmer {
-            0% { background-position: -200% 0; }
-            100% { background-position: 200% 0; }
-        }
-        
-        .hero-content-loading .hero-title,
-        .hero-content-loading .hero-synopsis,
-        .hero-content-loading .hero-meta,
-        .hero-content-loading .hero-actions {
-            background: linear-gradient(90deg, #333 25%, #444 50%, #333 75%);
-            background-size: 200% 100%;
-            animation: shimmer 1.5s infinite;
-            border-radius: 4px;
-            color: transparent !important;
-        }
-        
-        .hero-content-loading .hero-title { height: 80px; margin-bottom: 20px; }
-        .hero-content-loading .hero-synopsis { height: 60px; margin-bottom: 20px; }
-        .hero-content-loading .hero-meta { height: 30px; width: 60%; margin-bottom: 30px; }
-        .hero-content-loading .hero-actions { height: 50px; width: 300px; }
-        
-        /* URL Encode Display */
-        .url-encode-badge {
-            position: absolute;
-            bottom: 10px;
-            right: 10px;
-            background: rgba(0,0,0,0.8);
-            color: var(--primary-blue);
-            padding: 4px 8px;
-            border-radius: 4px;
-            font-size: 0.625rem;
-            font-family: monospace;
-            opacity: 0;
-            transition: opacity 0.3s ease;
-            z-index: 10;
-        }
-        
-        .movie-card:hover .url-encode-badge {
-            opacity: 1;
-        }
-        
-        /* Stagger Animation for Cards */
-        .movie-card {
-            opacity: 0;
-            transform: translateY(30px);
-            animation: cardEnter 0.6s cubic-bezier(0.4, 0, 0.2, 1) forwards;
-        }
-        
-        @keyframes cardEnter {
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-        
-        /* Floating Animation for Badges */
-        .badge {
-            animation: floatBadge 3s ease-in-out infinite;
-        }
-        
-        @keyframes floatBadge {
-            0%, 100% { transform: translateY(0); }
-            50% { transform: translateY(-3px); }
-        }
-        
-        /* Glow Pulse for Play Button */
-        .play-btn {
-            position: relative;
-        }
-        
-        .play-btn::before {
-            content: '';
-            position: absolute;
-            inset: -10px;
-            border: 2px solid var(--primary-red);
-            border-radius: 50%;
-            opacity: 0;
-            animation: pulseRing 2s ease-out infinite;
-        }
-        
-        @keyframes pulseRing {
-            0% { transform: scale(0.8); opacity: 1; }
-            100% { transform: scale(1.5); opacity: 0; }
-        }
-        
-        /* Section Title Animation */
-        .section-title-wrapper {
-            position: relative;
-            overflow: hidden;
-        }
-        
-        .section-title-wrapper::after {
-            content: '';
-            position: absolute;
-            bottom: 0;
-            left: 0;
-            width: 0;
-            height: 2px;
-            background: var(--gradient-primary);
-            animation: expandLine 1s ease forwards;
-        }
-        
-        @keyframes expandLine {
-            to { width: 100%; }
-        }
-        
-        /* Scroll Progress Bar */
-        .scroll-progress {
-            position: fixed;
-            top: 0;
-            left: 0;
-            height: 3px;
-            background: var(--gradient-primary);
-            z-index: 10000;
-            width: 0%;
-            transition: width 0.1s linear;
-        }
-        
-        /* Parallax Effect for Hero */
-        .hero-image {
-            will-change: transform;
-        }
-        
-        /* Magnetic Button Effect */
-        .btn-hero {
-            transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.3s ease;
-        }
-        
-        .btn-hero:hover {
-            transform: translateY(-3px) scale(1.02);
-            box-shadow: 0 20px 40px rgba(227, 30, 36, 0.4);
-        }
-        
-        /* Card 3D Tilt Effect */
-        .movie-card {
-            transform-style: preserve-3d;
-            perspective: 1000px;
-        }
-        
-        .movie-card:hover {
-            transform: translateY(-12px) rotateX(5deg) rotateY(-5deg);
-        }
-        
-        /* Gradient Border Animation */
-        .gradient-border {
-            position: relative;
-        }
-        
-        .gradient-border::before {
-            content: '';
-            position: absolute;
-            inset: -2px;
-            background: var(--gradient-primary);
-            border-radius: inherit;
-            z-index: -1;
-            opacity: 0;
-            transition: opacity 0.3s ease;
-        }
-        
-        .gradient-border:hover::before {
-            opacity: 1;
-            animation: rotateGradient 3s linear infinite;
-        }
-        
-        @keyframes rotateGradient {
-            0% { filter: hue-rotate(0deg); }
-            100% { filter: hue-rotate(360deg); }
-        }
-    </style>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
 <body>
-    <!-- Scroll Progress -->
-    <div class="scroll-progress" id="scrollProgress"></div>
-    
-    <!-- Skip Link for Accessibility -->
-    <a href="#main-content" class="skip-link">Aller au contenu principal</a>
-    
-    <!-- Header -->
-    <header class="main-header" id="main-header">
-        <div class="header-backdrop"></div>
-        <div class="header-content">
-            <a href="index.html" class="logo-link">
-                <div class="logo-container">
-                    <svg class="logo-svg" viewBox="0 0 200 50" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <text x="0" y="40" fill="#E31E24" font-family="Bebas Neue" font-size="48" font-weight="bold">ZEEX</text>
-                        <text x="95" y="40" fill="#00A7E1" font-family="Bebas Neue" font-size="48" font-weight="bold">CLUB</text>
-                        <path d="M180 10 Q190 25 180 40" stroke="white" stroke-width="2" fill="none" opacity="0.5"/>
-                        <circle cx="185" cy="25" r="3" fill="white" opacity="0.8"/>
-                    </svg>
-                </div>
+    <!-- Navigation -->
+    <nav class="navbar">
+        <div class="nav-container">
+            <a href="index.html" class="nav-logo">
+                <span class="logo-text">ZeeX</span><span class="logo-accent">Club</span>
             </a>
             
-            <nav class="primary-nav">
-                <ul class="nav-list">
-                    <li class="nav-item">
-                        <a href="index.html" class="nav-link active">
-                            <span class="nav-text">Accueil</span>
-                            <span class="nav-hover">Accueil</span>
-                            <svg class="nav-underline" viewBox="0 0 100 6" preserveAspectRatio="none">
-                                <path class="underline-path" d="M0,3 Q50,0 100,3" stroke="#E31E24" stroke-width="3" fill="none" stroke-dasharray="100" stroke-dashoffset="100"/>
-                            </svg>
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a href="catalog.html" class="nav-link">
-                            <span class="nav-text">Catalogue</span>
-                            <span class="nav-hover">Catalogue</span>
-                            <svg class="nav-underline" viewBox="0 0 100 6" preserveAspectRatio="none">
-                                <path class="underline-path" d="M0,3 Q50,0 100,3" stroke="#E31E24" stroke-width="3" fill="none" stroke-dasharray="100" stroke-dashoffset="100"/>
-                            </svg>
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a href="trending.html" class="nav-link">
-                            <span class="nav-text">Tendances</span>
-                            <span class="nav-hover">Tendances</span>
-                            <span class="trending-badge">HOT</span>
-                            <svg class="nav-underline" viewBox="0 0 100 6" preserveAspectRatio="none">
-                                <path class="underline-path" d="M0,3 Q50,0 100,3" stroke="#E31E24" stroke-width="3" fill="none" stroke-dasharray="100" stroke-dashoffset="100"/>
-                            </svg>
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a href="mylist.html" class="nav-link">
-                            <span class="nav-text">Ma Liste</span>
-                            <span class="nav-hover">Ma Liste</span>
-                            <span class="list-count" id="navListCount" style="display:none">0</span>
-                            <svg class="nav-underline" viewBox="0 0 100 6" preserveAspectRatio="none">
-                                <path class="underline-path" d="M0,3 Q50,0 100,3" stroke="#E31E24" stroke-width="3" fill="none" stroke-dasharray="100" stroke-dashoffset="100"/>
-                            </svg>
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a href="search.html" class="nav-link">
-                            <span class="nav-text">Recherche</span>
-                            <span class="nav-hover">Recherche</span>
-                            <svg class="nav-underline" viewBox="0 0 100 6" preserveAspectRatio="none">
-                                <path class="underline-path" d="M0,3 Q50,0 100,3" stroke="#E31E24" stroke-width="3" fill="none" stroke-dasharray="100" stroke-dashoffset="100"/>
-                            </svg>
-                        </a>
-                    </li>
-                </ul>
-            </nav>
+            <div class="nav-links" id="navLinks">
+                <a href="index.html" class="nav-link active">Accueil</a>
+                <a href="catalog.html?type=movie" class="nav-link">Films</a>
+                <a href="catalog.html?type=series" class="nav-link">Séries</a>
+                <a href="catalog.html" class="nav-link">Catalogue</a>
+                <a href="mylist.html" class="nav-link">Ma Liste</a>
+            </div>
             
-            <div class="header-actions">
-                <div class="search-wrapper" id="searchWrapper">
-                    <button class="search-toggle" id="searchToggle" aria-label="Rechercher">
-                        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <circle cx="11" cy="11" r="8"></circle>
-                            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-                        </svg>
-                    </button>
-                    <div class="search-panel">
-                        <form class="search-form" action="search.html" method="GET">
-                            <input type="text" name="q" class="search-input" placeholder="Rechercher un film, une série..." autocomplete="off">
-                            <button type="submit" class="search-submit" aria-label="Lancer la recherche">
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    <circle cx="11" cy="11" r="8"></circle>
-                                    <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-                                </svg>
-                            </button>
-                        </form>
-                    </div>
+            <div class="nav-actions">
+                <div class="search-box">
+                    <input type="text" id="searchInput" placeholder="Rechercher...">
+                    <button id="searchBtn"><i class="fas fa-search"></i></button>
                 </div>
-                
-                <button class="notifications-btn" aria-label="Notifications">
-                    <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
-                        <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
-                    </svg>
-                    <span class="notification-dot"></span>
-                </button>
-                
-                <div class="user-menu-wrapper" id="userMenuWrapper">
-                    <button class="user-menu-toggle" id="userMenuToggle" aria-label="Menu utilisateur">
-                        <img src="img/default-avatar.png" alt="Avatar" class="user-avatar-small" id="headerAvatar">
-                        <span class="user-name-short" id="headerUserName">Invité</span>
-                        <svg class="dropdown-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <polyline points="6 9 12 15 18 9"></polyline>
-                        </svg>
-                    </button>
-                    <div class="user-dropdown">
-                        <div class="dropdown-header">
-                            <img src="img/default-avatar.png" alt="Avatar" class="dropdown-avatar" id="dropdownAvatar">
-                            <div class="dropdown-user-info">
-                                <strong id="dropdownUserName">Invité</strong>
-                                <span id="dropdownUserEmail">Connectez-vous</span>
-                            </div>
-                        </div>
-                        <div class="dropdown-divider"></div>
-                        <a href="profile.html" class="dropdown-item">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
-                                <circle cx="12" cy="7" r="4"></circle>
-                            </svg>
-                            Profil
-                        </a>
-                        <a href="mylist.html" class="dropdown-item">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
-                            </svg>
-                            Ma Liste
-                        </a>
-                        <a href="profile.html#settings" class="dropdown-item">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <circle cx="12" cy="12" r="3"></circle>
-                                <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
-                            </svg>
-                            Paramètres
-                        </a>
-                        <div class="dropdown-divider"></div>
-                        <button class="dropdown-item logout-item" id="logoutBtn">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
-                                <polyline points="16 17 21 12 16 7"></polyline>
-                                <line x1="21" y1="12" x2="9" y2="12"></line>
-                            </svg>
-                            Déconnexion
-                        </button>
-                    </div>
-                </div>
-                
-                <a href="login.html" class="btn-login-header" id="loginBtn">
-                    <span class="btn-shine"></span>
-                    Connexion
+                <a href="profile.html" class="profile-btn">
+                    <i class="fas fa-user"></i>
                 </a>
-            </div>
-            
-            <button class="mobile-menu-toggle" id="mobileMenuToggle" aria-label="Menu">
-                <span class="hamburger-line"></span>
-                <span class="hamburger-line"></span>
-                <span class="hamburger-line"></span>
-            </button>
-        </div>
-    </header>
-    
-    <!-- Mobile Navigation -->
-    <div class="mobile-nav" id="mobileNav">
-        <div class="mobile-nav-backdrop"></div>
-        <div class="mobile-nav-panel">
-            <div class="mobile-nav-header">
-                <span class="mobile-nav-title">Menu</span>
-                <button class="mobile-nav-close" id="mobileNavClose">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <line x1="18" y1="6" x2="6" y2="18"></line>
-                        <line x1="6" y1="6" x2="18" y2="18"></line>
-                    </svg>
+                <button class="mobile-menu-btn" id="mobileMenuBtn">
+                    <i class="fas fa-bars"></i>
                 </button>
             </div>
-            <ul class="mobile-nav-list">
-                <li><a href="index.html" class="mobile-nav-link active">Accueil</a></li>
-                <li><a href="catalog.html" class="mobile-nav-link">Catalogue</a></li>
-                <li><a href="trending.html" class="mobile-nav-link">Tendances</a></li>
-                <li><a href="mylist.html" class="mobile-nav-link">Ma Liste</a></li>
-                <li><a href="search.html" class="mobile-nav-link">Recherche</a></li>
-                <li><a href="profile.html" class="mobile-nav-link">Profil</a></li>
-                <li><a href="login.html" class="mobile-nav-link mobile-login">Connexion</a></li>
-            </ul>
         </div>
-    </div>
-    
+    </nav>
+
     <!-- Hero Section -->
-    <section class="hero-section" id="heroSection">
-        <div class="hero-slider">
-            <div class="hero-slides-container" id="heroSlides">
-                <!-- Dynamic content loaded via JS -->
-                <div class="hero-loading" id="heroLoading"></div>
+    <header class="hero" id="hero">
+        <div class="hero-backdrop" id="heroBackdrop"></div>
+        <div class="hero-content">
+            <span class="hero-badge" id="heroBadge">Nouveau</span>
+            <h1 class="hero-title" id="heroTitle">Chargement...</h1>
+            <p class="hero-meta" id="heroMeta"></p>
+            <p class="hero-description" id="heroDescription"></p>
+            <div class="hero-actions">
+                <a href="#" class="btn btn-primary" id="heroPlay">
+                    <i class="fas fa-play"></i> Lecture
+                </a>
+                <button class="btn btn-secondary" id="heroMoreInfo">
+                    <i class="fas fa-info-circle"></i> Plus d'infos
+                </button>
+                <button class="btn btn-icon" id="heroAddList">
+                    <i class="fas fa-plus"></i>
+                </button>
             </div>
         </div>
-        
-        <div class="hero-controls">
-            <button class="hero-nav prev" id="heroPrev" aria-label="Précédent">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <polyline points="15 18 9 12 15 6"></polyline>
-                </svg>
-            </button>
-            <div class="hero-dots" id="heroDots"></div>
-            <button class="hero-nav next" id="heroNext" aria-label="Suivant">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <polyline points="9 18 15 12 9 6"></polyline>
-                </svg>
-            </button>
-        </div>
-        
-        <div class="hero-progress">
-            <div class="hero-progress-bar" id="heroProgress"></div>
-        </div>
-        
-        <div class="scroll-indicator">
-            <div class="mouse">
-                <div class="wheel"></div>
-            </div>
-            <span class="scroll-text">Scroll</span>
-        </div>
-    </section>
-    
+        <div class="hero-vignette"></div>
+    </header>
+
     <!-- Main Content -->
-    <main class="main-content" id="main-content">
-        <!-- Nouveautés -->
+    <main class="main-content">
+        <!-- Section Tendances -->
         <section class="content-section">
             <div class="section-header">
-                <div class="section-title-wrapper">
-                    <h2 class="section-title">
-                        <svg class="title-icon title-icon-pulse" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
-                        </svg>
-                        Nouveautés
-                    </h2>
-                    <span class="section-count" id="newCount">Chargement...</span>
-                </div>
-                <a href="catalog.html?sort=new" class="section-link">
-                    Voir tout
-                    <svg class="link-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <line x1="5" y1="12" x2="19" y2="12"></line>
-                        <polyline points="12 5 19 12 12 19"></polyline>
-                    </svg>
-                </a>
+                <h2 class="section-title">Tendances actuelles</h2>
+                <a href="catalog.html?trending=true" class="see-all">Tout voir <i class="fas fa-chevron-right"></i></a>
             </div>
-            <div class="content-slider">
-                <button class="slider-arrow prev" aria-label="Précédent">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <polyline points="15 18 9 12 15 6"></polyline>
-                    </svg>
+            <div class="content-slider" id="trendingSlider">
+                <button class="slider-arrow slider-prev" onclick="scrollSlider('trendingSlider', -1)">
+                    <i class="fas fa-chevron-left"></i>
                 </button>
-                <div class="slider-track" id="newReleasesTrack">
-                    <!-- Dynamic content -->
+                <div class="slider-container" id="trendingContainer">
+                    <!-- Contenu injecté par JS -->
                 </div>
-                <button class="slider-arrow next" aria-label="Suivant">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <polyline points="9 18 15 12 9 6"></polyline>
-                    </svg>
+                <button class="slider-arrow slider-next" onclick="scrollSlider('trendingSlider', 1)">
+                    <i class="fas fa-chevron-right"></i>
                 </button>
             </div>
         </section>
-        
-        <!-- Tendances -->
-        <section class="content-section section-top">
-            <div class="section-header">
-                <div class="section-title-wrapper">
-                    <h2 class="section-title">
-                        <svg class="title-icon title-icon-fire" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"></path>
-                        </svg>
-                        Top 10 des tendances
-                    </h2>
-                    <span class="section-badge">Cette semaine</span>
-                </div>
-            </div>
-            <div class="top-slider">
-                <div class="top-track" id="topTrendingTrack">
-                    <!-- Dynamic content -->
-                </div>
-            </div>
-        </section>
-        
-        <!-- Films Populaires -->
+
+        <!-- Section Nouveautés -->
         <section class="content-section">
             <div class="section-header">
-                <div class="section-title-wrapper">
-                    <h2 class="section-title">
-                        <svg class="title-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <rect x="2" y="2" width="20" height="20" rx="2.18" ry="2.18"></rect>
-                            <line x1="7" y1="2" x2="7" y2="22"></line>
-                            <line x1="17" y1="2" x2="17" y2="22"></line>
-                            <line x1="2" y1="12" x2="22" y2="12"></line>
-                            <line x1="2" y1="7" x2="7" y2="7"></line>
-                            <line x1="2" y1="17" x2="7" y2="17"></line>
-                            <line x1="17" y1="17" x2="22" y2="17"></line>
-                            <line x1="17" y1="7" x2="22" y2="7"></line>
-                        </svg>
-                        Films Populaires
-                    </h2>
-                </div>
-                <div class="section-filters">
-                    <button class="filter-chip active" data-filter="all">Tous</button>
-                    <button class="filter-chip" data-filter="action">Action</button>
-                    <button class="filter-chip" data-filter="drama">Drame</button>
-                    <button class="filter-chip" data-filter="comedy">Comédie</button>
-                </div>
+                <h2 class="section-title">Nouveautés</h2>
+                <a href="catalog.html?recent=true" class="see-all">Tout voir <i class="fas fa-chevron-right"></i></a>
             </div>
-            <div class="movie-grid" id="popularMoviesGrid">
-                <!-- Dynamic content -->
-            </div>
-            <div class="section-footer">
-                <button class="btn-outline btn-load-more" id="loadMoreMovies">
-                    Charger plus
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <polyline points="6 9 12 15 18 9"></polyline>
-                    </svg>
+            <div class="content-slider" id="recentSlider">
+                <button class="slider-arrow slider-prev" onclick="scrollSlider('recentSlider', -1)">
+                    <i class="fas fa-chevron-left"></i>
+                </button>
+                <div class="slider-container" id="recentContainer"></div>
+                <button class="slider-arrow slider-next" onclick="scrollSlider('recentSlider', 1)">
+                    <i class="fas fa-chevron-right"></i>
                 </button>
             </div>
         </section>
-        
-        <!-- Séries du Moment -->
+
+        <!-- Section Films -->
         <section class="content-section">
             <div class="section-header">
-                <div class="section-title-wrapper">
-                    <h2 class="section-title">
-                        <svg class="title-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <rect x="2" y="7" width="20" height="15" rx="2" ry="2"></rect>
-                            <polyline points="17 2 12 7 7 2"></polyline>
-                        </svg>
-                        Séries du Moment
-                    </h2>
-                </div>
-                <a href="catalog.html?type=series" class="section-link">
-                    Toutes les séries
-                    <svg class="link-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <line x1="5" y1="12" x2="19" y2="12"></line>
-                        <polyline points="12 5 19 12 12 19"></polyline>
-                    </svg>
-                </a>
+                <h2 class="section-title">Films populaires</h2>
+                <a href="catalog.html?type=movie" class="see-all">Tout voir <i class="fas fa-chevron-right"></i></a>
             </div>
-            <div class="movie-grid" id="popularSeriesGrid">
-                <!-- Dynamic content -->
+            <div class="content-slider" id="moviesSlider">
+                <button class="slider-arrow slider-prev" onclick="scrollSlider('moviesSlider', -1)">
+                    <i class="fas fa-chevron-left"></i>
+                </button>
+                <div class="slider-container" id="moviesContainer"></div>
+                <button class="slider-arrow slider-next" onclick="scrollSlider('moviesSlider', 1)">
+                    <i class="fas fa-chevron-right"></i>
+                </button>
             </div>
         </section>
-        
-        <!-- Par Genres -->
+
+        <!-- Section Séries -->
         <section class="content-section">
             <div class="section-header">
-                <div class="section-title-wrapper">
-                    <h2 class="section-title">
-                        <svg class="title-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"></path>
-                        </svg>
-                        Parcourir par Genre
-                    </h2>
-                </div>
+                <h2 class="section-title">Séries du moment</h2>
+                <a href="catalog.html?type=series" class="see-all">Tout voir <i class="fas fa-chevron-right"></i></a>
             </div>
-            <div class="genre-grid">
-                <a href="catalog.html?genre=action" class="genre-card genre-action">
-                    <div class="genre-bg"></div>
-                    <span class="genre-name">Action</span>
-                    <span class="genre-count">245 films</span>
-                </a>
-                <a href="catalog.html?genre=scifi" class="genre-card genre-scifi">
-                    <div class="genre-bg"></div>
-                    <span class="genre-name">Science-Fiction</span>
-                    <span class="genre-count">189 films</span>
-                </a>
-                <a href="catalog.html?genre=drama" class="genre-card genre-drama">
-                    <div class="genre-bg"></div>
-                    <span class="genre-name">Drame</span>
-                    <span class="genre-count">312 films</span>
-                </a>
-                <a href="catalog.html?genre=comedy" class="genre-card genre-comedy">
-                    <div class="genre-bg"></div>
-                    <span class="genre-name">Comédie</span>
-                    <span class="genre-count">278 films</span>
-                </a>
-                <a href="catalog.html?genre=horror" class="genre-card genre-horror">
-                    <div class="genre-bg"></div>
-                    <span class="genre-name">Horreur</span>
-                    <span class="genre-count">156 films</span>
-                </a>
-                <a href="catalog.html?genre=animation" class="genre-card genre-animation">
-                    <div class="genre-bg"></div>
-                    <span class="genre-name">Animation</span>
-                    <span class="genre-count">203 films</span>
-                </a>
-            </div>
-        </section>
-        
-        <!-- CTA Section -->
-        <section class="cta-section">
-            <div class="cta-backdrop"></div>
-            <div class="cta-gradient"></div>
-            <div class="cta-content">
-                <h2 class="cta-title">Rejoignez ZeeXClub Premium</h2>
-                <p class="cta-text">Accédez à des milliers de films et séries en qualité 4K, sans publicité, sur tous vos appareils.</p>
-                <div class="cta-buttons">
-                    <a href="login.html" class="btn-cta-primary">Commencer gratuitement</a>
-                    <button class="btn-cta-secondary" onclick="showToast('Fonctionnalité à venir', 'info')">En savoir plus</button>
-                </div>
+            <div class="content-slider" id="seriesSlider">
+                <button class="slider-arrow slider-prev" onclick="scrollSlider('seriesSlider', -1)">
+                    <i class="fas fa-chevron-left"></i>
+                </button>
+                <div class="slider-container" id="seriesContainer"></div>
+                <button class="slider-arrow slider-next" onclick="scrollSlider('seriesSlider', 1)">
+                    <i class="fas fa-chevron-right"></i>
+                </button>
             </div>
         </section>
     </main>
-    
+
     <!-- Footer -->
-    <footer class="main-footer">
-        <div class="footer-wave">
-            <svg viewBox="0 0 1440 120" preserveAspectRatio="none">
-                <path d="M0,64L48,69.3C96,75,192,85,288,80C384,75,480,53,576,48C672,43,768,53,864,64C960,75,1056,85,1152,80C1248,75,1344,53,1392,42.7L1440,32L1440,120L1392,120C1344,120,1248,120,1152,120C1056,120,960,120,864,120C768,120,672,120,576,120C480,120,384,120,288,120C192,120,96,120,48,120L0,120Z"></path>
-            </svg>
-        </div>
+    <footer class="footer">
         <div class="footer-content">
-            <div class="footer-brand">
-                <svg class="footer-logo" viewBox="0 0 200 50" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <text x="0" y="40" fill="#E31E24" font-family="Bebas Neue" font-size="48" font-weight="bold">ZEEX</text>
-                    <text x="95" y="40" fill="#00A7E1" font-family="Bebas Neue" font-size="48" font-weight="bold">CLUB</text>
-                </svg>
-                <p class="footer-tagline">Votre plateforme de streaming premium. Films, séries et bien plus en qualité 4K.</p>
+            <div class="footer-section">
+                <h3 class="footer-title">ZeeXClub</h3>
+                <p>Votre plateforme de streaming préférée. Films et séries en HD.</p>
                 <div class="social-links">
-                    <a href="#" class="social-link" aria-label="Twitter">
-                        <svg viewBox="0 0 24 24" fill="currentColor">
-                            <path d="M23 3a10.9 10.9 0 0 1-3.14 1.53 4.48 4.48 0 0 0-7.86 3v1A10.66 10.66 0 0 1 3 4s-4 9 5 13a11.64 11.64 0 0 1-7 2c9 5 20 0 20-11.5a4.5 4.5 0 0 0-.08-.83A7.72 7.72 0 0 0 23 3z"></path>
-                        </svg>
-                    </a>
-                    <a href="#" class="social-link" aria-label="Instagram">
-                        <svg viewBox="0 0 24 24" fill="currentColor">
-                            <rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect>
-                            <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path>
-                            <line x1="17.5" y1="6.5" x2="17.51" y2="6.5"></line>
-                        </svg>
-                    </a>
-                    <a href="#" class="social-link" aria-label="Discord">
-                        <svg viewBox="0 0 24 24" fill="currentColor">
-                            <path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 0 0 .031.057 19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028 14.09 14.09 0 0 0 1.226-1.994.076.076 0 0 0-.041-.106 13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.892.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03zM8.02 15.33c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.956-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.956 2.418-2.157 2.418zm7.975 0c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.955-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.946 2.418-2.157 2.418z"/>
-                        </svg>
-                    </a>
+                    <a href="#"><i class="fab fa-twitter"></i></a>
+                    <a href="#"><i class="fab fa-instagram"></i></a>
+                    <a href="#"><i class="fab fa-discord"></i></a>
                 </div>
             </div>
-            <nav class="footer-nav">
-                <div class="footer-column">
-                    <h4>Navigation</h4>
-                    <ul>
-                        <li><a href="index.html">Accueil</a></li>
-                        <li><a href="catalog.html">Catalogue</a></li>
-                        <li><a href="trending.html">Tendances</a></li>
-                        <li><a href="mylist.html">Ma Liste</a></li>
-                    </ul>
-                </div>
-                <div class="footer-column">
-                    <h4>Légal</h4>
-                    <ul>
-                        <li><a href="#">Conditions d'utilisation</a></li>
-                        <li><a href="#">Politique de confidentialité</a></li>
-                        <li><a href="#">Cookies</a></li>
-                        <li><a href="#">Mentions légales</a></li>
-                    </ul>
-                </div>
-                <div class="footer-column">
-                    <h4>Aide</h4>
-                    <ul>
-                        <li><a href="#">FAQ</a></li>
-                        <li><a href="#">Support</a></li>
-                        <li><a href="#">Contact</a></li>
-                        <li><a href="#">Signaler un problème</a></li>
-                    </ul>
-                </div>
-                <div class="footer-column">
-                    <h4>À propos</h4>
-                    <ul>
-                        <li><a href="#">Qui sommes-nous</a></li>
-                        <li><a href="#">Carrières</a></li>
-                        <li><a href="#">Presse</a></li>
-                        <li><a href="#">Partenaires</a></li>
-                    </ul>
-                </div>
-            </nav>
+            <div class="footer-section">
+                <h4>Navigation</h4>
+                <ul>
+                    <li><a href="index.html">Accueil</a></li>
+                    <li><a href="catalog.html">Catalogue</a></li>
+                    <li><a href="catalog.html?type=movie">Films</a></li>
+                    <li><a href="catalog.html?type=series">Séries</a></li>
+                </ul>
+            </div>
+            <div class="footer-section">
+                <h4>Mon compte</h4>
+                <ul>
+                    <li><a href="profile.html">Profil</a></li>
+                    <li><a href="mylist.html">Ma Liste</a></li>
+                    <li><a href="#">Paramètres</a></li>
+                </ul>
+            </div>
+            <div class="footer-section">
+                <h4>Légal</h4>
+                <ul>
+                    <li><a href="#">Mentions légales</a></li>
+                    <li><a href="#">Confidentialité</a></li>
+                    <li><a href="#">CGU</a></li>
+                </ul>
+            </div>
         </div>
         <div class="footer-bottom">
-            <p>&copy; 2026 ZeeXClub. Tous droits réservés.</p>
-            <p class="footer-made">Fait avec <span class="heart">♥</span> en France</p>
+            <p>&copy; 2024 ZeeXClub. Tous droits réservés.</p>
         </div>
     </footer>
-    
-    <!-- Bottom Navigation (Mobile) -->
-    <nav class="bottom-nav" aria-label="Navigation mobile">
-        <div class="bottom-nav-container">
-            <a href="index.html" class="bottom-nav-item active" aria-label="Accueil">
-                <svg class="bottom-nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
-                    <polyline points="9 22 9 12 15 12 15 22"></polyline>
-                </svg>
-                <span class="bottom-nav-label">Accueil</span>
-            </a>
-            <a href="catalog.html" class="bottom-nav-item" aria-label="Catalogue">
-                <svg class="bottom-nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect>
-                    <line x1="8" y1="21" x2="16" y2="21"></line>
-                    <line x1="12" y1="17" x2="12" y2="21"></line>
-                </svg>
-                <span class="bottom-nav-label">Catalogue</span>
-            </a>
-            <a href="search.html" class="bottom-nav-item" aria-label="Recherche">
-                <svg class="bottom-nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <circle cx="11" cy="11" r="8"></circle>
-                    <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-                </svg>
-                <span class="bottom-nav-label">Recherche</span>
-            </a>
-            <a href="mylist.html" class="bottom-nav-item" aria-label="Ma Liste">
-                <svg class="bottom-nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
-                </svg>
-                <span class="bottom-nav-label">Ma Liste</span>
-                <span class="nav-badge" id="bottomNavBadge" style="display:none">0</span>
-            </a>
-            <a href="profile.html" class="bottom-nav-item" aria-label="Profil">
-                <svg class="bottom-nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
-                    <circle cx="12" cy="7" r="4"></circle>
-                </svg>
-                <span class="bottom-nav-label">Profil</span>
-            </a>
-        </div>
-    </nav>
-    
-    <!-- Toast Container -->
-    <div class="toast-container" id="toastContainer"></div>
-    
-    <!-- Page Loader -->
-    <div class="page-loader" id="pageLoader">
-        <div class="loader-spinner"></div>
-        <p class="loader-text">Chargement</p>
+
+    <!-- Loading Overlay -->
+    <div class="loading-overlay" id="loadingOverlay">
+        <div class="spinner"></div>
     </div>
-    
+
     <!-- Scripts -->
     <script type="module" src="js/config.js"></script>
-    <script type="module" src="js/supabase-client.js"></script>
-    <script type="module" src="js/auth.js"></script>
     <script type="module" src="js/api.js"></script>
-    <script type="module" src="js/utils.js"></script>
     <script type="module" src="js/main.js"></script>
-    <script type="module" src="js/bottom-nav.js"></script>
-    
-    <script>
-        // Scroll Progress
-        window.addEventListener('scroll', () => {
-            const winScroll = document.body.scrollTop || document.documentElement.scrollTop;
-            const height = document.documentElement.scrollHeight - document.documentElement.clientHeight;
-            const scrolled = (winScroll / height) * 100;
-            document.getElementById('scrollProgress').style.width = scrolled + '%';
-        });
-        
-        // Hero Parallax
-        window.addEventListener('scroll', () => {
-            const scrolled = window.pageYOffset;
-            const heroImage = document.querySelector('.hero-image');
-            if (heroImage) {
-                heroImage.style.transform = `translateY(${scrolled * 0.5}px) scale(1.1)`;
-            }
-        });
-        
-        // Mobile Menu Toggle
-        const mobileMenuToggle = document.getElementById('mobileMenuToggle');
-        const mobileNav = document.getElementById('mobileNav');
-        const mobileNavClose = document.getElementById('mobileNavClose');
-        
-        mobileMenuToggle?.addEventListener('click', () => {
-            mobileMenuToggle.classList.toggle('active');
-            mobileNav.classList.toggle('active');
-        });
-        
-        mobileNavClose?.addEventListener('click', () => {
-            mobileMenuToggle.classList.remove('active');
-            mobileNav.classList.remove('active');
-        });
-        
-        // Search Toggle
-        const searchToggle = document.getElementById('searchToggle');
-        const searchWrapper = document.getElementById('searchWrapper');
-        
-        searchToggle?.addEventListener('click', () => {
-            searchWrapper.classList.toggle('active');
-            if (searchWrapper.classList.contains('active')) {
-                searchWrapper.querySelector('input')?.focus();
-            }
-        });
-        
-        // Close search on click outside
-        document.addEventListener('click', (e) => {
-            if (!searchWrapper?.contains(e.target)) {
-                searchWrapper?.classList.remove('active');
-            }
-        });
-    </script>
 </body>
 </html>

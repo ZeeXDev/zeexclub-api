@@ -1,4 +1,3 @@
-# backend/services/__init__.py
 """
-Services Module
+Module Services - Intégrations externes
 """

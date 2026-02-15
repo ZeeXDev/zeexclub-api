@@ -1,137 +1,241 @@
-# backend/database/models.py
 """
-Modèles de données (schémas) pour documentation et validation
-Note: Les vraies tables sont gérées par Supabase, ce sont des dataclasses
+Modèles Pydantic - Validation des données
 """
 
-from dataclasses import dataclass, field
-from typing import Optional, List, Dict, Any
-from datetime import datetime
+from datetime import date, datetime
+from typing import List, Optional, Dict, Any
+from uuid import UUID
+from enum import Enum
+
+from pydantic import BaseModel, Field, HttpUrl, validator
 
 
-@dataclass
-class Folder:
-    """Représente un dossier (film ou série)"""
-    id: str
-    folder_name: str
-    parent_id: Optional[str] = None
-    created_at: Optional[str] = None
-    updated_at: Optional[str] = None
+class ShowType(str, Enum):
+    movie = "movie"
+    series = "series"
+
+
+class ServerName(str, Enum):
+    filemoon = "filemoon"
+    telegram = "telegram"
+
+
+# ============================================================================
+# MODÈLES SHOW (Film/Série)
+# ============================================================================
+
+class ShowBase(BaseModel):
+    """Modèle de base pour un show"""
+    tmdb_id: int = Field(..., description="ID TMDB")
+    title: str = Field(..., min_length=1, max_length=500)
+    type: ShowType
+    overview: Optional[str] = None
+    poster_path: Optional[str] = None
+    backdrop_path: Optional[str] = None
+    release_date: Optional[date] = None
+    genres: Optional[List[str]] = []
+    runtime: Optional[int] = None  # Durée en minutes
+    rating: Optional[float] = Field(None, ge=0, le=10)
+    language: Optional[str] = "fr"
     
-    # Champs TMDB enrichis
-    tmdb_id: Optional[int] = None
+    @validator('genres', pre=True)
+    def parse_genres(cls, v):
+        if isinstance(v, str):
+            return [g.strip() for g in v.split(',') if g.strip()]
+        return v or []
+
+
+class ShowCreate(ShowBase):
+    """Modèle pour création de show"""
+    pass
+
+
+class ShowUpdate(BaseModel):
+    """Modèle pour mise à jour partielle"""
     title: Optional[str] = None
-    description: Optional[str] = None
-    poster_url: Optional[str] = None
-    poster_url_small: Optional[str] = None
-    backdrop_url: Optional[str] = None
-    year: Optional[int] = None
+    overview: Optional[str] = None
+    poster_path: Optional[str] = None
+    backdrop_path: Optional[str] = None
+    release_date: Optional[date] = None
+    genres: Optional[List[str]] = None
     rating: Optional[float] = None
-    genres: List[str] = field(default_factory=list)
-    media_type: Optional[str] = None  # 'movie' ou 'tv'
+
+
+class ShowInDB(ShowBase):
+    """Modèle représentant un show en base de données"""
+    id: UUID
+    created_at: datetime
+    updated_at: Optional[datetime] = None
+    views: int = 0
+    status: str = "active"  # active, archived, pending
     
-    # Pour séries
-    season_number: Optional[int] = None
-    season_overview: Optional[str] = None
-    season_poster: Optional[str] = None
-    episode_count: Optional[int] = None
+    class Config:
+        from_attributes = True
 
 
-@dataclass
-class Video:
-    """Représente une vidéo (film ou épisode)"""
-    id: str
-    folder_id: str
-    title: str
-    file_id: str
-    zeex_url: str
-    created_at: Optional[str] = None
+class ShowResponse(ShowInDB):
+    """Modèle de réponse API pour un show"""
+    seasons_count: Optional[int] = 0
+    episodes_count: Optional[int] = 0
+
+
+# ============================================================================
+# MODÈLES SAISON
+# ============================================================================
+
+class SeasonBase(BaseModel):
+    """Modèle de base pour une saison"""
+    show_id: UUID
+    season_number: int = Field(..., ge=0)
+    name: Optional[str] = None
+    poster: Optional[str] = None
+    overview: Optional[str] = None
+    air_date: Optional[date] = None
+
+
+class SeasonCreate(SeasonBase):
+    pass
+
+
+class SeasonInDB(SeasonBase):
+    id: UUID
+    created_at: datetime
     
-    # Métadonnées
-    description: Optional[str] = None
-    episode_number: Optional[int] = None
-    season_number: Optional[int] = None
-    filemoon_url: Optional[str] = None
-    caption: Optional[str] = None
-    file_size: Optional[int] = None
-    duration: Optional[int] = None
-    poster_url: Optional[str] = None
-    year: Optional[int] = None
-    genre: List[str] = field(default_factory=list)
-    rating: Optional[float] = None
-    views_count: int = 0
+    class Config:
+        from_attributes = True
+
+
+class SeasonResponse(SeasonInDB):
+    episodes_count: int = 0
+
+
+# ============================================================================
+# MODÈLES ÉPISODE
+# ============================================================================
+
+class EpisodeBase(BaseModel):
+    """Modèle de base pour un épisode"""
+    season_id: UUID
+    episode_number: int = Field(..., ge=1)
+    title: Optional[str] = None
+    overview: Optional[str] = None
+    thumbnail: Optional[str] = None
+    air_date: Optional[date] = None
+    runtime: Optional[int] = None
+
+
+class EpisodeCreate(EpisodeBase):
+    pass
+
+
+class EpisodeUpdate(BaseModel):
+    title: Optional[str] = None
+    overview: Optional[str] = None
+    thumbnail: Optional[str] = None
+
+
+class EpisodeInDB(EpisodeBase):
+    id: UUID
+    created_at: datetime
     
-    # Champs techniques
-    width: Optional[int] = None
-    height: Optional[int] = None
-    mime_type: Optional[str] = None
+    class Config:
+        from_attributes = True
+
+
+class EpisodeResponse(EpisodeInDB):
+    sources: List[Dict[str, Any]] = []
+
+
+# ============================================================================
+# MODÈLES SOURCE VIDÉO
+# ============================================================================
+
+class VideoSourceBase(BaseModel):
+    """Modèle de base pour une source vidéo"""
+    episode_id: UUID
+    server_name: ServerName
+    link: str
+    file_id: Optional[str] = None  # Pour Telegram
+    filemoon_code: Optional[str] = None  # Pour Filemoon
+    quality: Optional[str] = "HD"  # SD, HD, FHD, 4K
+    language: Optional[str] = "FR"
+    is_active: bool = True
+    file_size: Optional[int] = None  # Taille en bytes
+    duration: Optional[int] = None  # Durée en secondes
+
+
+class VideoSourceCreate(VideoSourceBase):
+    @validator('link')
+    def validate_link(cls, v, values):
+        if values.get('server_name') == ServerName.filemoon and not values.get('filemoon_code'):
+            raise ValueError("filemoon_code requis pour Filemoon")
+        return v
+
+
+class VideoSourceUpdate(BaseModel):
+    link: Optional[str] = None
+    is_active: Optional[bool] = None
+    quality: Optional[str] = None
+
+
+class VideoSourceInDB(VideoSourceBase):
+    id: UUID
+    created_at: datetime
     
-    # Champs TMDB
-    tmdb_episode_id: Optional[int] = None
-    still_path: Optional[str] = None
-    air_date: Optional[str] = None
+    class Config:
+        from_attributes = True
 
 
-@dataclass
-class Comment:
-    """Représente un commentaire"""
-    id: str
-    video_id: str
-    user_id: str
-    comment_text: str
-    created_at: Optional[str] = None
-    updated_at: Optional[str] = None
-    likes: int = 0
-    
-    # Jointure avec users
-    user_email: Optional[str] = None
-    user_display_name: Optional[str] = None
-    user_avatar_url: Optional[str] = None
+# ============================================================================
+# MODÈLES BOT & ADMIN
+# ============================================================================
+
+class BotSession(BaseModel):
+    """Session de création via bot"""
+    admin_id: int
+    current_show_id: Optional[UUID] = None
+    current_season_id: Optional[UUID] = None
+    current_episode_id: Optional[UUID] = None
+    state: str = "idle"  # idle, creating_show, adding_episode, selecting_season
+    temp_data: Dict[str, Any] = {}
+    last_activity: datetime = Field(default_factory=datetime.utcnow)
 
 
-@dataclass
-class WatchlistItem:
-    """Représente un élément de la liste de l'utilisateur"""
-    id: str
-    user_id: str
-    video_id: str
-    added_at: Optional[str] = None
-    
-    # Jointure
-    video: Optional[Video] = None
+class UploadTask(BaseModel):
+    """Tâche d'upload Filemoon"""
+    id: UUID
+    episode_id: UUID
+    file_id: str  # Telegram file_id
+    status: str = "pending"  # pending, uploading, processing, completed, failed
+    progress: int = 0
+    filemoon_code: Optional[str] = None
+    error_message: Optional[str] = None
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    completed_at: Optional[datetime] = None
 
 
-@dataclass
-class WatchHistoryItem:
-    """Représente un élément d'historique de visionnage"""
-    id: str
-    user_id: str
-    video_id: str
-    progress: int = 0  # En secondes
-    completed: bool = False
-    last_watched: Optional[str] = None
-    
-    # Jointure
-    video: Optional[Video] = None
+# ============================================================================
+# MODÈLES RÉPONSES API
+# ============================================================================
+
+class PaginatedResponse(BaseModel):
+    """Réponse paginée standard"""
+    success: bool = True
+    data: List[Any]
+    pagination: Dict[str, Any]
+    filters: Optional[Dict[str, Any]] = None
 
 
-@dataclass
-class StreamMapping:
-    """Mapping entre unique_id et file_id Telegram"""
-    id: str
-    unique_id: str
-    file_id: str
-    created_at: Optional[str] = None
+class ErrorResponse(BaseModel):
+    """Réponse d'erreur standard"""
+    error: bool = True
+    message: str
+    status_code: int
+    details: Optional[Dict[str, Any]] = None
 
 
-@dataclass
-class User:
-    """Représente un utilisateur (depuis Supabase Auth)"""
-    id: str
-    email: str
-    created_at: Optional[str] = None
-    
-    # Métadonnées
-    display_name: Optional[str] = None
-    avatar_url: Optional[str] = None
-    full_name: Optional[str] = None
+class SuccessResponse(BaseModel):
+    """Réponse succès standard"""
+    success: bool = True
+    message: str
+    data: Optional[Any] = None

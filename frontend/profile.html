@@ -1,62 +1,379 @@
-<!-- frontend/profile.html -->
 <!DOCTYPE html>
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Profil - ZeeXClub</title>
+    <meta name="description" content="Votre profil ZeeXClub">
+    
+    <link rel="icon" type="image/x-icon" href="/img/favicon.ico">
     <link rel="stylesheet" href="css/main.css">
+    <link rel="stylesheet" href="css/responsive.css">
     <link rel="stylesheet" href="css/profile.css">
-    <link rel="stylesheet" href="css/bottom-nav.css">
-
+    
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <style>
+        .profile-container {
+            max-width: 800px;
+            margin: 100px auto 60px;
+            padding: 0 20px;
+        }
+        
+        .profile-header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+        
+        .profile-avatar {
+            width: 120px;
+            height: 120px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--primary-color), #ff6b6b);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 3rem;
+            color: white;
+            margin: 0 auto 20px;
+            border: 4px solid var(--bg-card);
+            box-shadow: var(--shadow-md);
+        }
+        
+        .profile-name {
+            font-size: 1.8rem;
+            font-weight: 700;
+            margin-bottom: 5px;
+        }
+        
+        .profile-email {
+            color: var(--text-secondary);
+        }
+        
+        .profile-stats {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 20px;
+            margin-bottom: 40px;
+        }
+        
+        .stat-card {
+            background: var(--bg-card);
+            padding: 25px;
+            border-radius: var(--radius-md);
+            text-align: center;
+            transition: var(--transition);
+        }
+        
+        .stat-card:hover {
+            transform: translateY(-5px);
+            background: var(--bg-hover);
+        }
+        
+        .stat-value {
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--primary-color);
+            margin-bottom: 5px;
+        }
+        
+        .stat-label {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+        }
+        
+        .profile-section {
+            background: var(--bg-card);
+            border-radius: var(--radius-md);
+            padding: 30px;
+            margin-bottom: 20px;
+        }
+        
+        .section-header-flex {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 25px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid var(--border-color);
+        }
+        
+        .section-title-small {
+            font-size: 1.2rem;
+            font-weight: 600;
+        }
+        
+        .profile-menu {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        
+        .profile-menu-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 15px 20px;
+            background: var(--bg-dark);
+            border-radius: var(--radius-sm);
+            transition: var(--transition);
+            cursor: pointer;
+        }
+        
+        .profile-menu-item:hover {
+            background: var(--bg-hover);
+            padding-left: 25px;
+        }
+        
+        .profile-menu-item i:first-child {
+            width: 30px;
+            color: var(--primary-color);
+        }
+        
+        .profile-menu-item i:last-child {
+            color: var(--text-muted);
+        }
+        
+        .watch-history-item {
+            display: flex;
+            gap: 15px;
+            padding: 15px;
+            background: var(--bg-dark);
+            border-radius: var(--radius-sm);
+            margin-bottom: 10px;
+            transition: var(--transition);
+        }
+        
+        .watch-history-item:hover {
+            background: var(--bg-hover);
+        }
+        
+        .history-thumb {
+            width: 120px;
+            aspect-ratio: 16/9;
+            object-fit: cover;
+            border-radius: var(--radius-sm);
+            background: var(--bg-hover);
+        }
+        
+        .history-info {
+            flex: 1;
+        }
+        
+        .history-title {
+            font-weight: 600;
+            margin-bottom: 5px;
+        }
+        
+        .history-meta {
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+        }
+        
+        .history-progress {
+            margin-top: 10px;
+            height: 4px;
+            background: var(--bg-hover);
+            border-radius: 2px;
+            overflow: hidden;
+        }
+        
+        .history-progress-bar {
+            height: 100%;
+            background: var(--primary-color);
+            width: 65%;
+        }
+        
+        @media (max-width: 768px) {
+            .profile-stats {
+                grid-template-columns: 1fr;
+            }
+            
+            .watch-history-item {
+                flex-direction: column;
+            }
+            
+            .history-thumb {
+                width: 100%;
+            }
+        }
+    </style>
 </head>
 <body>
-    <header>
-        <div class="header-container">
-            <a href="index.html" class="logo">
-                <img src="/img/logo.png" alt="ZeeXClub">
+    <!-- Navigation -->
+    <nav class="navbar">
+        <div class="nav-container">
+            <a href="index.html" class="nav-logo">
+                <span class="logo-text">ZeeX</span><span class="logo-accent">Club</span>
             </a>
-            <nav>
-                <a href="index.html">Accueil</a>
-                <a href="catalog.html">Catalogue</a>
-            </nav>
+            
+            <div class="nav-links" id="navLinks">
+                <a href="index.html" class="nav-link">Accueil</a>
+                <a href="catalog.html?type=movie" class="nav-link">Films</a>
+                <a href="catalog.html?type=series" class="nav-link">Séries</a>
+                <a href="catalog.html" class="nav-link">Catalogue</a>
+                <a href="mylist.html" class="nav-link">Ma Liste</a>
+            </div>
+            
+            <div class="nav-actions">
+                <div class="search-box">
+                    <input type="text" id="searchInput" placeholder="Rechercher...">
+                    <button id="searchBtn"><i class="fas fa-search"></i></button>
+                </div>
+                <a href="profile.html" class="profile-btn">
+                    <i class="fas fa-user"></i>
+                </a>
+                <button class="mobile-menu-btn" id="mobileMenuBtn">
+                    <i class="fas fa-bars"></i>
+                </button>
+            </div>
         </div>
-    </header>
+    </nav>
 
-    <main class="profile-page">
+    <!-- Profile Content -->
+    <div class="profile-container">
+        <!-- Header -->
         <div class="profile-header">
             <div class="profile-avatar">
-                <img id="profile-avatar" src="/img/default-avatar.png" alt="Avatar">
+                <i class="fas fa-user"></i>
             </div>
-            <div class="profile-info">
-                <h1 id="profile-name">Chargement...</h1>
-                <p id="profile-email">...</p>
-                <button id="btn-logout" class="btn-outline">Déconnexion</button>
+            <h1 class="profile-name">Utilisateur</h1>
+            <p class="profile-email">utilisateur@example.com</p>
+        </div>
+
+        <!-- Stats -->
+        <div class="profile-stats">
+            <div class="stat-card">
+                <div class="stat-value">0</div>
+                <div class="stat-label">Films regardés</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value">0</div>
+                <div class="stat-label">Séries suivies</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value">0h</div>
+                <div class="stat-label">Temps de visionnage</div>
             </div>
         </div>
 
-        <div id="user-stats" class="stats-grid">
-            <!-- Injecté par JS -->
+        <!-- Historique -->
+        <div class="profile-section">
+            <div class="section-header-flex">
+                <h2 class="section-title-small"><i class="fas fa-history"></i> Continuer la lecture</h2>
+                <a href="#" style="color: var(--text-secondary); font-size: 0.9rem;">Voir tout</a>
+            </div>
+            
+            <div class="watch-history" id="watchHistory">
+                <div class="empty-state" style="padding: 40px 20px;">
+                    <i class="fas fa-play-circle" style="font-size: 3rem; color: var(--text-muted); margin-bottom: 15px;"></i>
+                    <p style="color: var(--text-secondary);">Aucun historique de visionnage</p>
+                </div>
+            </div>
         </div>
 
-        <div class="profile-sections">
-            <section class="profile-section">
-                <h2>Historique de visionnage</h2>
-                <div id="history-list" class="history-list">
-                    <!-- Injecté par JS -->
+        <!-- Menu Paramètres -->
+        <div class="profile-section">
+            <div class="section-header-flex">
+                <h2 class="section-title-small"><i class="fas fa-cog"></i> Paramètres</h2>
+            </div>
+            
+            <div class="profile-menu">
+                <div class="profile-menu-item" onclick="window.location.href='mylist.html'">
+                    <div style="display: flex; align-items: center; gap: 15px;">
+                        <i class="fas fa-bookmark"></i>
+                        <span>Ma Liste</span>
+                    </div>
+                    <i class="fas fa-chevron-right"></i>
                 </div>
-            </section>
-
-            <section class="profile-section">
-                <h2>Ma Liste</h2>
-                <div id="watchlist-grid" class="movie-grid">
-                    <!-- Injecté par JS -->
+                
+                <div class="profile-menu-item">
+                    <div style="display: flex; align-items: center; gap: 15px;">
+                        <i class="fas fa-bell"></i>
+                        <span>Notifications</span>
+                    </div>
+                    <i class="fas fa-chevron-right"></i>
                 </div>
-            </section>
+                
+                <div class="profile-menu-item">
+                    <div style="display: flex; align-items: center; gap: 15px;">
+                        <i class="fas fa-shield-alt"></i>
+                        <span>Confidentialité</span>
+                    </div>
+                    <i class="fas fa-chevron-right"></i>
+                </div>
+                
+                <div class="profile-menu-item">
+                    <div style="display: flex; align-items: center; gap: 15px;">
+                        <i class="fas fa-palette"></i>
+                        <span>Apparence</span>
+                    </div>
+                    <i class="fas fa-chevron-right"></i>
+                </div>
+                
+                <div class="profile-menu-item">
+                    <div style="display: flex; align-items: center; gap: 15px;">
+                        <i class="fas fa-language"></i>
+                        <span>Langue</span>
+                    </div>
+                    <i class="fas fa-chevron-right"></i>
+                </div>
+                
+                <div class="profile-menu-item" style="color: var(--error-color);">
+                    <div style="display: flex; align-items: center; gap: 15px;">
+                        <i class="fas fa-sign-out-alt"></i>
+                        <span>Déconnexion</span>
+                    </div>
+                    <i class="fas fa-chevron-right"></i>
+                </div>
+            </div>
         </div>
-    </main>
+    </div>
 
-    <script type="module" src="/js/profile.js"></script>
-    <script type="module" src="/js/bottom-nav.js"></script>
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="footer-content">
+            <div class="footer-section">
+                <h3 class="footer-title">ZeeXClub</h3>
+                <p>Votre plateforme de streaming préférée. Films et séries en HD.</p>
+                <div class="social-links">
+                    <a href="#"><i class="fab fa-twitter"></i></a>
+                    <a href="#"><i class="fab fa-instagram"></i></a>
+                    <a href="#"><i class="fab fa-discord"></i></a>
+                </div>
+            </div>
+            <div class="footer-section">
+                <h4>Navigation</h4>
+                <ul>
+                    <li><a href="index.html">Accueil</a></li>
+                    <li><a href="catalog.html">Catalogue</a></li>
+                    <li><a href="catalog.html?type=movie">Films</a></li>
+                    <li><a href="catalog.html?type=series">Séries</a></li>
+                </ul>
+            </div>
+            <div class="footer-section">
+                <h4>Mon compte</h4>
+                <ul>
+                    <li><a href="profile.html">Profil</a></li>
+                    <li><a href="mylist.html">Ma Liste</a></li>
+                    <li><a href="#">Paramètres</a></li>
+                </ul>
+            </div>
+            <div class="footer-section">
+                <h4>Légal</h4>
+                <ul>
+                    <li><a href="#">Mentions légales</a></li>
+                    <li><a href="#">Confidentialité</a></li>
+                    <li><a href="#">CGU</a></li>
+                </ul>
+            </div>
+        </div>
+        <div class="footer-bottom">
+            <p>&copy; 2024 ZeeXClub. Tous droits réservés.</p>
+        </div>
+    </footer>
 </body>
 </html>

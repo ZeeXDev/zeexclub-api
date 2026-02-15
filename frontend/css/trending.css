@@ -1,0 +1,253 @@
+/* ============================================
+   ZeeXClub - Styles Page Tendances (trending.html)
+   ============================================ */
+
+.trending-header {
+    padding: 120px 4% 40px;
+    background: linear-gradient(
+        135deg,
+        rgba(229, 9, 20, 0.1) 0%,
+        rgba(20,20,20,0.9) 50%,
+        var(--bg-dark) 100%
+    );
+    border-bottom: 1px solid var(--border-color);
+    position: relative;
+    overflow: hidden;
+}
+
+.trending-header::before {
+    content: '\f0c0';
+    font-family: 'Font Awesome 6 Free';
+    font-weight: 900;
+    position: absolute;
+    right: 10%;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 15rem;
+    color: rgba(229, 9, 20, 0.05);
+    z-index: 0;
+}
+
+.trending-title {
+    font-size: 2.8rem;
+    font-weight: 800;
+    margin-bottom: 15px;
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    position: relative;
+    z-index: 1;
+}
+
+.trending-title i {
+    color: #ff6b6b;
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.1); }
+}
+
+.trending-subtitle {
+    color: var(--text-secondary);
+    font-size: 1.1rem;
+    max-width: 600px;
+    position: relative;
+    z-index: 1;
+}
+
+/* Top 10 Spécial */
+.top-ten-section {
+    padding: 50px 4%;
+    background: linear-gradient(
+        to bottom,
+        rgba(255,255,255,0.02),
+        transparent
+    );
+}
+
+.top-ten-title {
+    font-size: 1.8rem;
+    font-weight: 700;
+    margin-bottom: 30px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.top-ten-title::before {
+    content: 'TOP';
+    background: linear-gradient(135deg, #ffd700, #ff6b6b);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    font-weight: 900;
+}
+
+.top-ten-grid {
+    display: grid;
+    grid-template-columns: repeat(10, 1fr);
+    gap: 15px;
+    overflow-x: auto;
+    padding-bottom: 20px;
+    scrollbar-width: thin;
+    scrollbar-color: var(--border-color) transparent;
+}
+
+.top-ten-grid::-webkit-scrollbar {
+    height: 8px;
+}
+
+.top-ten-grid::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.top-ten-grid::-webkit-scrollbar-thumb {
+    background: var(--border-color);
+    border-radius: 4px;
+}
+
+/* Carte Top 10 avec numéro */
+.top-ten-card {
+    position: relative;
+    flex-shrink: 0;
+    width: 200px;
+    cursor: pointer;
+    transition: transform 0.3s;
+}
+
+.top-ten-card:hover {
+    transform: scale(1.05);
+    z-index: 10;
+}
+
+.top-number {
+    position: absolute;
+    left: -10px;
+    top: -20px;
+    font-size: 6rem;
+    font-weight: 900;
+    font-style: italic;
+    color: rgba(255,255,255,0.15);
+    line-height: 1;
+    z-index: 1;
+    text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+    transition: color 0.3s;
+}
+
+.top-ten-card:hover .top-number {
+    color: rgba(229, 9, 20, 0.3);
+}
+
+.top-ten-card .movie-poster {
+    width: 100%;
+    aspect-ratio: 2/3;
+    border-radius: var(--radius-md);
+    position: relative;
+    z-index: 2;
+    box-shadow: var(--shadow-md);
+}
+
+.top-ten-card .movie-info {
+    padding: 10px 0;
+}
+
+.top-ten-card .movie-title {
+    font-size: 0.95rem;
+    font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* Grille tendances */
+.trending-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 25px;
+    padding: 40px 4%;
+}
+
+/* Badges tendance */
+.trending-badge {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    background: linear-gradient(135deg, #ff6b6b, #ffa502);
+    color: white;
+    padding: 5px 12px;
+    border-radius: 20px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    z-index: 10;
+    box-shadow: 0 4px 10px rgba(255, 107, 107, 0.3);
+}
+
+.trending-badge::before {
+    content: '\f201';
+    font-family: 'Font Awesome 6 Free';
+    font-weight: 900;
+}
+
+.views-badge {
+    position: absolute;
+    bottom: 10px;
+    right: 10px;
+    background: rgba(0,0,0,0.8);
+    color: white;
+    padding: 5px 10px;
+    border-radius: 5px;
+    font-size: 0.8rem;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    z-index: 10;
+    backdrop-filter: blur(4px);
+}
+
+/* Responsive */
+@media (max-width: 1400px) {
+    .top-ten-grid {
+        grid-template-columns: repeat(5, 1fr);
+    }
+}
+
+@media (max-width: 768px) {
+    .top-ten-grid {
+        display: flex;
+        gap: 15px;
+        overflow-x: scroll;
+    }
+    
+    .top-ten-card {
+        width: 150px;
+    }
+    
+    .top-number {
+        font-size: 4rem;
+        left: -5px;
+        top: -15px;
+    }
+    
+    .trending-grid {
+        grid-template-columns: repeat(3, 1fr);
+        gap: 15px;
+    }
+    
+    .trending-title {
+        font-size: 2rem;
+    }
+}
+
+@media (max-width: 480px) {
+    .top-ten-card {
+        width: 130px;
+    }
+    
+    .trending-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
