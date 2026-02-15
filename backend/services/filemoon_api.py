@@ -5,7 +5,7 @@ Upload et gestion des vidéos
 
 import logging
 import asyncio
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, List
 import httpx
 import json
 
