@@ -1,19 +1,32 @@
 """
 Client Pyrogram - Bot Telegram ZeeXClub
-Gestionnaire principal du bot
+Gestionnaire principal du bot - Version Web Service pour Render
 """
 
 import logging
 import asyncio
+import os
 from typing import Optional
 
 from pyrogram import Client, idle
 from pyrogram.types import BotCommand
 from pyrogram.enums import ParseMode
 
-from config import settings
-from bot.commands import setup_commands, setup_handlers
-from bot.handlers import setup_additional_handlers
+# Serveur HTTP pour health check Render
+from aiohttp import web
+
+# Imports relatifs pour fonctionner avec python -m bot.bot
+try:
+    from config import settings
+    from bot.commands import setup_commands, setup_handlers
+    from bot.handlers import setup_additional_handlers
+except ImportError:
+    # Fallback si exécuté différemment
+    import sys
+    sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    from config import settings
+    from bot.commands import setup_commands, setup_handlers
+    from bot.handlers import setup_additional_handlers
 
 logger = logging.getLogger(__name__)
 
@@ -21,11 +34,37 @@ logger = logging.getLogger(__name__)
 bot: Optional[Client] = None
 
 
+async def health_check(request):
+    """Endpoint health check pour Render"""
+    return web.Response(text="✅ ZeeXClub Bot is running", status=200)
+
+
+async def start_web_server():
+    """Démarre le serveur web minimal pour health checks"""
+    app = web.Application()
+    app.router.add_get('/', health_check)
+    app.router.add_get('/health', health_check)
+    
+    runner = web.AppRunner(app)
+    await runner.setup()
+    
+    port = int(os.getenv('PORT', 10000))
+    site = web.TCPSite(runner, '0.0.0.0', port)
+    
+    await site.start()
+    logger.info(f"🌐 Serveur health check démarré sur port {port}")
+    
+    return runner
+
+
 async def start_bot():
     """
-    Démarre le bot Telegram dans une boucle asyncio
+    Démarre le bot Telegram + serveur web pour Render
     """
     global bot
+    
+    # Démarrer le serveur web d'abord (pour que Render détecte le service UP)
+    web_runner = await start_web_server()
     
     try:
         logger.info("🤖 Initialisation du bot Telegram...")
@@ -40,14 +79,13 @@ async def start_bot():
             "sleep_threshold": 60
         }
         
-        # Ajout session string si disponible (pour Koyeb)
+        # Gestion session string vs bot token
         if settings.TELEGRAM_SESSION_STRING:
             logger.info("🔑 Utilisation de la session string")
             client_config["session_string"] = settings.TELEGRAM_SESSION_STRING
-            # Enlever bot_token si session_string est présent (incompatible)
-            del client_config["bot_token"]
         else:
-            logger.info("📝 Utilisation du bot token (pas de session string)")
+            logger.info("📝 Utilisation du bot token")
+            client_config["bot_token"] = settings.BOT_TOKEN
         
         # Création du client Pyrogram
         bot = Client(**client_config)
@@ -57,20 +95,23 @@ async def start_bot():
         setup_handlers(bot)
         setup_additional_handlers(bot)
         
-        # Démarrage
+        # Démarrage du bot
         await bot.start()
         me = await bot.get_me()
         logger.info(f"✅ Bot démarré: @{me.username}")
         
         # Export session string si première connexion
-        if not settings.TELEGRAM_SESSION_STRING:
-            session_string = await bot.export_session_string()
-            logger.info("=" * 50)
-            logger.info("📝 SESSION STRING À COPIER DANS KOYEB :")
-            logger.info(session_string)
-            logger.info("=" * 50)
+        if not settings.TELEGRAM_SESSION_STRING and not hasattr(settings, 'TELEGRAM_SESSION_STRING'):
+            try:
+                session_string = await bot.export_session_string()
+                logger.info("=" * 50)
+                logger.info("📝 SESSION STRING À SAUVEGARDER:")
+                logger.info(session_string)
+                logger.info("=" * 50)
+            except Exception as e:
+                logger.warning(f"⚠️ Impossible d'exporter la session: {e}")
         
-        # Mise à jour des commandes dans le menu - CORRIGÉ ICI
+        # Mise à jour des commandes dans le menu
         try:
             await bot.set_bot_commands([
                 BotCommand("start", "Démarrer le bot"),
@@ -87,15 +128,15 @@ async def start_bot():
         except Exception as e:
             logger.warning(f"⚠️ Commandes non mises à jour: {e}")
         
-        # Garder le bot en vie
+        # Garder le bot en vie (idle bloque mais le serveur web tourne déjà)
         await idle()
         
     except Exception as e:
         logger.error(f"❌ Erreur bot: {e}", exc_info=True)
         raise
     finally:
-        if bot:
-            await bot.stop()
+        await stop_bot()
+        await web_runner.cleanup()
 
 
 async def stop_bot():
@@ -109,3 +150,19 @@ async def stop_bot():
 def get_bot() -> Optional[Client]:
     """Retourne l'instance du bot"""
     return bot
+
+
+# Point d'entrée pour python -m bot.bot
+if __name__ == "__main__":
+    logging.basicConfig(
+        level=logging.INFO,
+        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    )
+    
+    try:
+        asyncio.run(start_bot())
+    except KeyboardInterrupt:
+        logger.info("👋 Arrêt demandé par l'utilisateur")
+    except Exception as e:
+        logger.error(f"💥 Erreur fatale: {e}", exc_info=True)
+        raise
