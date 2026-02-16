@@ -29,16 +29,28 @@ async def start_bot():
     try:
         logger.info("🤖 Initialisation du bot Telegram...")
         
+        # Configuration de base
+        client_config = {
+            "name": "zeexclub_bot",
+            "api_id": settings.TELEGRAM_API_ID,
+            "api_hash": settings.TELEGRAM_API_HASH,
+            "bot_token": settings.TELEGRAM_BOT_TOKEN,
+            "parse_mode": ParseMode.MARKDOWN,
+            "workers": 4,
+            "sleep_threshold": 60
+        }
+        
+        # Ajout session string si disponible (pour Koyeb)
+        if settings.TELEGRAM_SESSION_STRING:
+            logger.info("🔑 Utilisation de la session string")
+            client_config["session_string"] = settings.TELEGRAM_SESSION_STRING
+            # Enlever bot_token si session_string est présent (incompatible)
+            del client_config["bot_token"]
+        else:
+            logger.info("📝 Utilisation du bot token (pas de session string)")
+        
         # Création du client Pyrogram
-        bot = Client(
-            name="zeexclub_bot",
-            api_id=settings.TELEGRAM_API_ID or 2040,  # Default si non set
-            api_hash=settings.TELEGRAM_API_HASH or "b18441a1ff607e10a989891a5462e627",
-            bot_token=settings.TELEGRAM_BOT_TOKEN,
-            parse_mode=ParseMode.MARKDOWN,
-            workers=4,
-            sleep_threshold=60
-        )
+        bot = Client(**client_config)
         
         # Configuration des commandes et handlers
         setup_commands(bot)
@@ -47,6 +59,14 @@ async def start_bot():
         # Démarrage
         await bot.start()
         logger.info(f"✅ Bot démarré: @{bot.me.username}")
+        
+        # Export session string si première connexion
+        if not settings.TELEGRAM_SESSION_STRING:
+            session_string = await bot.export_session_string()
+            logger.info("=" * 50)
+            logger.info("📝 SESSION STRING À COPIER DANS KOYEB :")
+            logger.info(session_string)
+            logger.info("=" * 50)
         
         # Mise à jour des commandes dans le menu
         await bot.set_bot_commands([

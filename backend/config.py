@@ -34,7 +34,8 @@ class Settings(BaseSettings):
     TELEGRAM_API_ID: int = Field(default=37641587, env="TELEGRAM_API_ID")
     TELEGRAM_API_HASH: str = Field(default="9bce1167e828939f39452795e56202a9", env="TELEGRAM_API_HASH")
     ADMIN_USER_IDS: list = Field(default=[8467461906], env="ADMIN_USER_IDS")
-    
+    TELEGRAM_SESSION_STRING: Optional[str] = Field(default=None, env="TELEGRAM_SESSION_STRING")
+
     # TMDB
     TMDB_API_KEY: str = Field(default="f2bed62b5977bce26540055276d0046c", env="TMDB_API_KEY")
     TMDB_BASE_URL: str = "https://api.themoviedb.org/3"
