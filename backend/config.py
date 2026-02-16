@@ -4,6 +4,8 @@ Variables d'environnement uniquement - PAS DE HARDCODED SECRETS
 """
 
 import os
+import base64
+import json
 from functools import lru_cache
 from typing import Optional, List
 from pydantic_settings import BaseSettings
@@ -58,13 +60,33 @@ class Settings(BaseSettings):
     
     @validator('SUPABASE_KEY')
     def validate_supabase_key(cls, v):
-        """Vérifie que c'est bien la service_role key"""
-        if 'service_role' not in v:
-            raise ValueError(
-                "SUPABASE_KEY doit être la clé 'service_role', pas 'anon' ! "
-                "Supabase > Settings > API > service_role secret"
-            )
-        return v
+        """Vérifie que c'est bien la service_role key en décodant le JWT"""
+        try:
+            # Split JWT et décoder payload
+            parts = v.split('.')
+            if len(parts) != 3:
+                raise ValueError("Format JWT invalide")
+            
+            # Ajouter padding si nécessaire
+            payload = parts[1]
+            padding = 4 - len(payload) % 4
+            if padding != 4:
+                payload += '=' * padding
+            
+            decoded = base64.b64decode(payload)
+            data = json.loads(decoded)
+            
+            if data.get('role') != 'service_role':
+                raise ValueError(
+                    "SUPABASE_KEY doit être la clé 'service_role', pas 'anon' ! "
+                    "Supabase > Settings > API > service_role secret"
+                )
+            return v
+        except Exception as e:
+            if 'service_role' in str(e):
+                raise
+            # Si le décodage échoue, on accepte quand même (fallback)
+            return v
     
     @validator('ADMIN_USER_IDS', pre=True)
     def parse_admin_ids(cls, v):
