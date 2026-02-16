@@ -154,10 +154,16 @@ else:
         )
 
 
-# Endpoints de base
-@app.get("/")
+# ==========================================
+# Endpoints de base - CORRIGÉS pour UptimeRobot
+# ==========================================
+
+@app.api_route("/", methods=["GET", "HEAD", "OPTIONS"])
 async def root():
-    """Endpoint racine / health check"""
+    """
+    Endpoint racine / health check
+    Supporte GET, HEAD et OPTIONS pour UptimeRobot
+    """
     return {
         "status": "online",
         "service": "ZeeXClub API",
@@ -167,9 +173,12 @@ async def root():
     }
 
 
-@app.get("/health")
+@app.api_route("/health", methods=["GET", "HEAD", "OPTIONS"])
 async def health_check():
-    """Health check détaillé"""
+    """
+    Health check détaillé
+    Supporte GET, HEAD et OPTIONS pour UptimeRobot
+    """
     health_data = {
         "status": "healthy",
         "timestamp": asyncio.get_event_loop().time(),
@@ -193,13 +202,13 @@ async def health_check():
     return health_data
 
 
-@app.get("/ready")
+@app.api_route("/ready", methods=["GET", "HEAD", "OPTIONS"])
 async def readiness_check():
     """Koyeb readiness probe"""
     return {"ready": True}
 
 
-@app.get("/alive")
+@app.api_route("/alive", methods=["GET", "HEAD", "OPTIONS"])
 async def liveness_check():
     """Koyeb liveness probe"""
     return {"alive": True}
