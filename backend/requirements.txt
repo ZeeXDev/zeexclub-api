@@ -4,7 +4,7 @@ python-telegram-bot==20.7
 pyrogram==2.0.106
 tgcrypto==1.2.5
 httpx==0.25.2
-supabase-py==1.0.2
+supabase==2.3.4
 
 # Remplacer asyncpg par psycopg2-binary uniquement
 # asyncpg==0.29.0  ← Supprimer cette ligne
