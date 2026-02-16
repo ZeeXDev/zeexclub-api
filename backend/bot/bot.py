@@ -8,11 +8,12 @@ import asyncio
 from typing import Optional
 
 from pyrogram import Client, idle
+from pyrogram.types import BotCommand
 from pyrogram.enums import ParseMode
 
 from config import settings
-from bot.commands import setup_commands
-from bot.handlers import setup_handlers
+from bot.commands import setup_commands, setup_handlers
+from bot.handlers import setup_additional_handlers
 
 logger = logging.getLogger(__name__)
 
@@ -34,7 +35,6 @@ async def start_bot():
             "name": "zeexclub_bot",
             "api_id": settings.TELEGRAM_API_ID,
             "api_hash": settings.TELEGRAM_API_HASH,
-            "bot_token": settings.TELEGRAM_BOT_TOKEN,
             "parse_mode": ParseMode.MARKDOWN,
             "workers": 4,
             "sleep_threshold": 60
@@ -55,10 +55,12 @@ async def start_bot():
         # Configuration des commandes et handlers
         setup_commands(bot)
         setup_handlers(bot)
+        setup_additional_handlers(bot)
         
         # Démarrage
         await bot.start()
-        logger.info(f"✅ Bot démarré: @{bot.me.username}")
+        me = await bot.get_me()
+        logger.info(f"✅ Bot démarré: @{me.username}")
         
         # Export session string si première connexion
         if not settings.TELEGRAM_SESSION_STRING:
@@ -68,24 +70,28 @@ async def start_bot():
             logger.info(session_string)
             logger.info("=" * 50)
         
-        # Mise à jour des commandes dans le menu
-        await bot.set_bot_commands([
-            ("start", "Démarrer le bot"),
-            ("create", "Créer un nouveau show"),
-            ("add", "Ajouter un épisode"),
-            ("addf", "Créer une saison/dossier"),
-            ("view", "Voir un show"),
-            ("docs", "Lister les shows"),
-            ("done", "Finaliser upload Filemoon"),
-            ("help", "Aide détaillée"),
-            ("cancel", "Annuler l'opération en cours")
-        ])
+        # Mise à jour des commandes dans le menu - CORRIGÉ ICI
+        try:
+            await bot.set_bot_commands([
+                BotCommand("start", "Démarrer le bot"),
+                BotCommand("create", "Créer un nouveau show"),
+                BotCommand("add", "Ajouter un épisode"),
+                BotCommand("addf", "Créer une saison/dossier"),
+                BotCommand("view", "Voir un show"),
+                BotCommand("docs", "Lister les shows"),
+                BotCommand("done", "Finaliser upload Filemoon"),
+                BotCommand("help", "Aide détaillée"),
+                BotCommand("cancel", "Annuler l'opération en cours"),
+            ])
+            logger.info("✅ Commandes du menu mises à jour")
+        except Exception as e:
+            logger.warning(f"⚠️ Commandes non mises à jour: {e}")
         
         # Garder le bot en vie
         await idle()
         
     except Exception as e:
-        logger.error(f"❌ Erreur bot: {e}")
+        logger.error(f"❌ Erreur bot: {e}", exc_info=True)
         raise
     finally:
         if bot:

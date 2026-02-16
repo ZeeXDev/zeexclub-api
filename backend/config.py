@@ -1,53 +1,52 @@
 """
 Configuration globale ZeeXClub
-Variables d'environnement et constantes
+Variables d'environnement uniquement - PAS DE HARDCODED SECRETS
 """
 
 import os
 from functools import lru_cache
-from typing import Optional
+from typing import Optional, List
 from pydantic_settings import BaseSettings
-from pydantic import Field
+from pydantic import Field, validator
 
 
 class Settings(BaseSettings):
-    """Configuration principale de l'application"""
+    """Configuration principale - TOUT vient des variables d'environnement"""
     
     # Application
     APP_NAME: str = "ZeeXClub API"
-    DEBUG: bool = Field(default=False, env="DEBUG")
+    DEBUG: bool = False
     VERSION: str = "1.0.0"
-    FRONTEND_URL: str = Field(default="http://zeexclub.vercel.app", env="FRONTEND_URL")
+    FRONTEND_URL: str = "http://localhost:3000"
     
-    # Sécurité
-    SECRET_KEY: str = Field(default="Y7Of_eEWfSPdcd42QGvup-nwXCLR0C2-DRIUFFH-gM_1QHooB6-7y06m6ZeDXIAdtG4", env="SECRET_KEY")
+    # Sécurité - OBLIGATOIRE
+    SECRET_KEY: str = Field(..., min_length=32, description="JWT secret key")
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
     
-    # Supabase
-    SUPABASE_URL: str = Field(default="https://hxdtaqnfnpzqndhqiopi.supabase.co", env="SUPABASE_URL")
-    SUPABASE_KEY: str = Field(default="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imh4ZHRhcW5mbnB6cW5kaHFpb3BpIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MDU3MTkwMiwiZXhwIjoyMDg2MTQ3OTAyfQ.JSekTT6re-zzyf4effXCfqZccAe_d2bmnQ6bVeH45aM", env="SUPABASE_KEY")
-    SUPABASE_SERVICE_KEY: str = Field(default="sb_secret_ijnE_sPpcVJdd5pGLMtg6w_FyHWG46H", env="SUPABASE_SERVICE_KEY")
+    # Supabase - OBLIGATOIRE
+    SUPABASE_URL: str = Field(..., description="URL Supabase project")
+    SUPABASE_KEY: str = Field(..., description="Service role key (NOT anon!)")
     
-    # Telegram Bot
-    TELEGRAM_BOT_TOKEN: str = Field(default="8588309317:AAFjJNfUAba8Ate8gd2h3LcJN8F3f0mLXbQ", env="TELEGRAM_BOT_TOKEN")
-    TELEGRAM_API_ID: int = Field(default=37641587, env="TELEGRAM_API_ID")
-    TELEGRAM_API_HASH: str = Field(default="9bce1167e828939f39452795e56202a9", env="TELEGRAM_API_HASH")
-    ADMIN_USER_IDS: list = Field(default=[8467461906], env="ADMIN_USER_IDS")
-    TELEGRAM_SESSION_STRING: Optional[str] = Field(default=None, env="TELEGRAM_SESSION_STRING")
-
-    # TMDB
-    TMDB_API_KEY: str = Field(default="f2bed62b5977bce26540055276d0046c", env="TMDB_API_KEY")
+    # Telegram Bot - OBLIGATOIRE
+    TELEGRAM_BOT_TOKEN: str = Field(...)
+    TELEGRAM_API_ID: int = Field(...)
+    TELEGRAM_API_HASH: str = Field(...)
+    ADMIN_USER_IDS: List[int] = Field(default_factory=list)
+    TELEGRAM_SESSION_STRING: Optional[str] = Field(default=None, description="Session string pour Pyrogram")
+    
+    # TMDB - OBLIGATOIRE
+    TMDB_API_KEY: str = Field(...)
     TMDB_BASE_URL: str = "https://api.themoviedb.org/3"
     TMDB_IMAGE_BASE_URL: str = "https://image.tmdb.org/t/p/original"
     
-    # Filemoon
-    FILEMOON_API_KEY: str = Field(default="109610tm5s00oygchhhs3u", env="FILEMOON_API_KEY")
+    # Filemoon - OBLIGATOIRE
+    FILEMOON_API_KEY: str = Field(...)
     FILEMOON_BASE_URL: str = "https://filemoon.sx/api"
     FILEMOON_PLAYER_URL: str = "https://filemoon.sx/e/"
     
-    # Redis (Cache)
-    REDIS_URL: str = Field(default="redis://localhost:6379", env="REDIS_URL")
+    # Redis (optionnel)
+    REDIS_URL: Optional[str] = None
     
     # Upload & Fichiers
     MAX_UPLOAD_SIZE: int = 2 * 1024 * 1024 * 1024  # 2GB
@@ -57,6 +56,23 @@ class Settings(BaseSettings):
     STREAM_BUFFER_SIZE: int = 256 * 1024  # 256KB
     STREAM_TIMEOUT: int = 300  # 5 minutes
     
+    @validator('SUPABASE_KEY')
+    def validate_supabase_key(cls, v):
+        """Vérifie que c'est bien la service_role key"""
+        if 'service_role' not in v:
+            raise ValueError(
+                "SUPABASE_KEY doit être la clé 'service_role', pas 'anon' ! "
+                "Supabase > Settings > API > service_role secret"
+            )
+        return v
+    
+    @validator('ADMIN_USER_IDS', pre=True)
+    def parse_admin_ids(cls, v):
+        """Parse les IDs admin depuis string ou liste"""
+        if isinstance(v, str):
+            return [int(x.strip()) for x in v.split(',') if x.strip()]
+        return v
+    
     class Config:
         env_file = ".env"
         case_sensitive = True
@@ -64,41 +80,34 @@ class Settings(BaseSettings):
 
 @lru_cache()
 def get_settings() -> Settings:
-    """Retourne une instance singleton des settings"""
+    """Singleton des settings"""
     return Settings()
 
 
 # Instance globale
 settings = get_settings()
 
-# Validation des variables critiques au démarrage
+
 def validate_config():
-    """Valide que toutes les configurations critiques sont présentes"""
-    required_vars = [
-        ("SUPABASE_URL", settings.SUPABASE_URL),
-        ("SUPABASE_KEY", settings.SUPABASE_KEY),
-        ("TELEGRAM_BOT_TOKEN", settings.TELEGRAM_BOT_TOKEN),
-        ("TMDB_API_KEY", settings.TMDB_API_KEY),
-        ("FILEMOON_API_KEY", settings.FILEMOON_API_KEY),
+    """Valide la configuration au démarrage"""
+    required = [
+        "SUPABASE_URL",
+        "SUPABASE_KEY", 
+        "SECRET_KEY",
+        "TELEGRAM_BOT_TOKEN",
+        "TMDB_API_KEY",
+        "FILEMOON_API_KEY"
     ]
     
-    missing = [name for name, value in required_vars if not value]
+    missing = [r for r in required if not getattr(settings, r)]
     
     if missing:
-        raise ValueError(f"Variables d'environnement manquantes: {', '.join(missing)}")
-    
-    # Parse ADMIN_USER_IDS si string
-    if isinstance(settings.ADMIN_USER_IDS, str):
-        settings.ADMIN_USER_IDS = [
-            int(x.strip()) 
-            for x in settings.ADMIN_USER_IDS.split(",") 
-            if x.strip()
-        ]
+        raise ValueError(f"Variables manquantes: {', '.join(missing)}")
     
     return True
 
 
-# Constantes métier
+# Constantes métier (pas de secrets ici)
 ALLOWED_VIDEO_TYPES = ['movie', 'series']
 ALLOWED_SERVER_NAMES = ['filemoon', 'telegram']
 TMDB_MEDIA_TYPES = ['movie', 'tv']
