@@ -22,23 +22,18 @@ async def init_supabase():
     # Debug - Voir quelle clé est utilisée
     logger.info(f"SUPABASE_URL from settings: {settings.SUPABASE_URL}")
     logger.info(f"SUPABASE_KEY length: {len(settings.SUPABASE_KEY) if settings.SUPABASE_KEY else 0}")
-    logger.info(f"SUPABASE_SERVICE_KEY length: {len(settings.SUPABASE_SERVICE_KEY) if settings.SUPABASE_SERVICE_KEY else 0}")
 
-    # Déterminer quelle clé utiliser (priorité à SERVICE_KEY si définie)
-    key_to_use = settings.SUPABASE_SERVICE_KEY if settings.SUPABASE_SERVICE_KEY else settings.SUPABASE_KEY
+    # Utiliser SUPABASE_KEY (la service_role key)
+    key_to_use = settings.SUPABASE_KEY
 
     if not key_to_use:
-        raise ValueError("Aucune clé Supabase définie (ni SUPABASE_SERVICE_KEY ni SUPABASE_KEY)")
-
-    # Vérifier que c'est la bonne clé
-    if "service_role" not in key_to_use:
-        logger.warning("⚠️ La clé ne semble pas être une service_role key !")
+        raise ValueError("SUPABASE_KEY non définie dans les variables d'environnement")
 
     try:
-        # ⚠️ Arguments positionnels pour create_client
+        # Création du client Supabase
         supabase = create_client(settings.SUPABASE_URL, key_to_use)
 
-        # Test de connexion simple, sécurisé
+        # Test de connexion simple
         try:
             response = supabase.table("shows").select("count", count="exact").limit(1).execute()
             count_shows = getattr(response, "count", "N/A")
