@@ -8,8 +8,8 @@ const isProduction = window.location.hostname !== 'localhost' &&
 
 // URLs API
 const API_BASE_URL = isProduction 
-    ? 'https://zeexclub.onrender.com/api'  // Remplacer par votre URL Render
-    : 'http://zeexclub.onrender.com/api';
+    ? 'https://zeexclub.koyeb.app/api'  // Remplacer par votre URL Render
+    : 'http://zeexclub.koyeb.app/api';
 
 // Configuration Supabase (lecture seule pour le frontend)
 const SUPABASE_CONFIG = {
