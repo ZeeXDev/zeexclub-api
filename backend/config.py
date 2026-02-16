@@ -30,7 +30,7 @@ class Settings(BaseSettings):
     SUPABASE_SERVICE_KEY: str = Field(default="sb_secret_ijnE_sPpcVJdd5pGLMtg6w_FyHWG46H", env="SUPABASE_SERVICE_KEY")
     
     # Telegram Bot
-    TELEGRAM_BOT_TOKEN: str = Field(default="8588309317:AAHHCc0dRQhQX3awCPRkQK7x4mYwM2syD6U", env="TELEGRAM_BOT_TOKEN")
+    TELEGRAM_BOT_TOKEN: str = Field(default="8588309317:AAFjJNfUAba8Ate8gd2h3LcJN8F3f0mLXbQ", env="TELEGRAM_BOT_TOKEN")
     TELEGRAM_API_ID: int = Field(default=37641587, env="TELEGRAM_API_ID")
     TELEGRAM_API_HASH: str = Field(default="9bce1167e828939f39452795e56202a9", env="TELEGRAM_API_HASH")
     ADMIN_USER_IDS: list = Field(default=[8467461906], env="ADMIN_USER_IDS")
