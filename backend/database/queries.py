@@ -82,8 +82,11 @@ async def get_show_by_id(show_id: str) -> Optional[Dict[str, Any]]:
     """
     try:
         supabase = get_supabase()
-        response = supabase.table("shows").select("*").eq("id", show_id).single().execute()
-        return response.data
+        response = supabase.table("shows").select("*").eq("id", show_id).maybe_single().execute()
+        # CORRECTION: maybe_single() retourne None si pas trouvé, ou un dict
+        if response.data:
+            return response.data
+        return None
         
     except APIError as e:
         if "JSON object requested, multiple (or no) rows returned" in str(e):
@@ -99,8 +102,13 @@ async def get_show_by_tmdb_id(tmdb_id: int) -> Optional[Dict[str, Any]]:
     """
     try:
         supabase = get_supabase()
-        response = supabase.table("shows").select("*").eq("tmdb_id", tmdb_id).single().execute()
-        return response.data
+        # CORRECTION: Utiliser .limit(1) au lieu de .single() pour éviter l'erreur JSON
+        response = supabase.table("shows").select("*").eq("tmdb_id", tmdb_id).limit(1).execute()
+        
+        # CORRECTION: response.data est une liste, prendre le premier élément
+        if response.data and len(response.data) > 0:
+            return response.data[0]
+        return None
         
     except APIError as e:
         if "JSON object requested" in str(e):
@@ -150,7 +158,8 @@ async def create_show(show_data: Dict[str, Any]) -> Dict[str, Any]:
         
         response = supabase.table("shows").insert(insert_data).execute()
         
-        if response.data:
+        # CORRECTION: response.data est une liste
+        if response.data and len(response.data) > 0:
             logger.info(f"✅ Show créé: {insert_data['title']} (ID: {insert_data['id']})")
             return response.data[0]
         else:
@@ -178,7 +187,8 @@ async def update_show(show_id: str, update_data: Dict[str, Any]) -> Optional[Dic
         
         response = supabase.table("shows").update(filtered_data).eq("id", show_id).execute()
         
-        if response.data:
+        # CORRECTION: response.data est une liste
+        if response.data and len(response.data) > 0:
             logger.info(f"✅ Show mis à jour: {show_id}")
             return response.data[0]
         return None
@@ -345,8 +355,11 @@ async def get_season_by_id(season_id: str) -> Optional[Dict[str, Any]]:
     """
     try:
         supabase = get_supabase()
-        response = supabase.table("seasons").select("*").eq("id", season_id).single().execute()
-        return response.data
+        # CORRECTION: Utiliser .limit(1) au lieu de .single()
+        response = supabase.table("seasons").select("*").eq("id", season_id).limit(1).execute()
+        if response.data and len(response.data) > 0:
+            return response.data[0]
+        return None
         
     except APIError as e:
         if "JSON object requested" in str(e):
@@ -362,8 +375,11 @@ async def get_season_by_number(show_id: str, season_number: int) -> Optional[Dic
     """
     try:
         supabase = get_supabase()
-        response = supabase.table("seasons").select("*").eq("show_id", show_id).eq("season_number", season_number).single().execute()
-        return response.data
+        # CORRECTION: Utiliser .limit(1) au lieu de .single()
+        response = supabase.table("seasons").select("*").eq("show_id", show_id).eq("season_number", season_number).limit(1).execute()
+        if response.data and len(response.data) > 0:
+            return response.data[0]
+        return None
         
     except APIError as e:
         if "JSON object requested" in str(e):
@@ -405,7 +421,8 @@ async def create_season(season_data: Dict[str, Any]) -> Dict[str, Any]:
         
         response = supabase.table("seasons").insert(insert_data).execute()
         
-        if response.data:
+        # CORRECTION: response.data est une liste
+        if response.data and len(response.data) > 0:
             logger.info(f"✅ Saison créée: {insert_data['name']} (Show: {season_data['show_id']})")
             return response.data[0]
         raise DatabaseError("Erreur création saison")
@@ -427,7 +444,8 @@ async def update_season(season_id: str, update_data: Dict[str, Any]) -> Optional
         filtered = {k: v for k, v in update_data.items() if k in allowed}
         
         response = supabase.table("seasons").update(filtered).eq("id", season_id).execute()
-        return response.data[0] if response.data else None
+        # CORRECTION: response.data est une liste
+        return response.data[0] if response.data and len(response.data) > 0 else None
         
     except Exception as e:
         handle_db_error(e, f"mise à jour saison {season_id}")
@@ -479,8 +497,11 @@ async def get_episode_by_id(episode_id: str) -> Optional[Dict[str, Any]]:
     """
     try:
         supabase = get_supabase()
-        response = supabase.table("episodes").select("*").eq("id", episode_id).single().execute()
-        return response.data
+        # CORRECTION: Utiliser .limit(1) au lieu de .single()
+        response = supabase.table("episodes").select("*").eq("id", episode_id).limit(1).execute()
+        if response.data and len(response.data) > 0:
+            return response.data[0]
+        return None
         
     except APIError as e:
         if "JSON object requested" in str(e):
@@ -496,8 +517,11 @@ async def get_episode_by_number(season_id: str, episode_number: int) -> Optional
     """
     try:
         supabase = get_supabase()
-        response = supabase.table("episodes").select("*").eq("season_id", season_id).eq("episode_number", episode_number).single().execute()
-        return response.data
+        # CORRECTION: Utiliser .limit(1) au lieu de .single()
+        response = supabase.table("episodes").select("*").eq("season_id", season_id).eq("episode_number", episode_number).limit(1).execute()
+        if response.data and len(response.data) > 0:
+            return response.data[0]
+        return None
         
     except APIError as e:
         if "JSON object requested" in str(e):
@@ -541,7 +565,8 @@ async def create_episode(episode_data: Dict[str, Any]) -> Dict[str, Any]:
         
         response = supabase.table("episodes").insert(insert_data).execute()
         
-        if response.data:
+        # CORRECTION: response.data est une liste
+        if response.data and len(response.data) > 0:
             logger.info(f"✅ Épisode créé: {insert_data['title']} (Saison: {episode_data['season_id']})")
             return response.data[0]
         raise DatabaseError("Erreur création épisode")
@@ -563,7 +588,8 @@ async def update_episode(episode_id: str, update_data: Dict[str, Any]) -> Option
         filtered = {k: v for k, v in update_data.items() if k in allowed}
         
         response = supabase.table("episodes").update(filtered).eq("id", episode_id).execute()
-        return response.data[0] if response.data else None
+        # CORRECTION: response.data est une liste
+        return response.data[0] if response.data and len(response.data) > 0 else None
         
     except Exception as e:
         handle_db_error(e, f"mise à jour épisode {episode_id}")
@@ -630,8 +656,11 @@ async def get_source_by_id(source_id: str) -> Optional[Dict[str, Any]]:
     """
     try:
         supabase = get_supabase()
-        response = supabase.table("video_sources").select("*").eq("id", source_id).single().execute()
-        return response.data
+        # CORRECTION: Utiliser .limit(1) au lieu de .single()
+        response = supabase.table("video_sources").select("*").eq("id", source_id).limit(1).execute()
+        if response.data and len(response.data) > 0:
+            return response.data[0]
+        return None
         
     except APIError as e:
         if "JSON object requested" in str(e):
@@ -668,7 +697,8 @@ async def create_video_source(source_data: Dict[str, Any]) -> Dict[str, Any]:
         
         response = supabase.table("video_sources").insert(insert_data).execute()
         
-        if response.data:
+        # CORRECTION: response.data est une liste
+        if response.data and len(response.data) > 0:
             logger.info(f"✅ Source créée: {source_data['server_name']} pour épisode {source_data['episode_id']}")
             return response.data[0]
         raise DatabaseError("Erreur création source")
@@ -688,7 +718,8 @@ async def update_video_source(source_id: str, update_data: Dict[str, Any]) -> Op
         filtered = {k: v for k, v in update_data.items() if k in allowed}
         
         response = supabase.table("video_sources").update(filtered).eq("id", source_id).execute()
-        return response.data[0] if response.data else None
+        # CORRECTION: response.data est une liste
+        return response.data[0] if response.data and len(response.data) > 0 else None
         
     except Exception as e:
         handle_db_error(e, f"mise à jour source {source_id}")
@@ -714,8 +745,11 @@ async def get_source_by_filemoon_code(filemoon_code: str) -> Optional[Dict[str, 
     """
     try:
         supabase = get_supabase()
-        response = supabase.table("video_sources").select("*").eq("filemoon_code", filemoon_code).single().execute()
-        return response.data
+        # CORRECTION: Utiliser .limit(1) au lieu de .single()
+        response = supabase.table("video_sources").select("*").eq("filemoon_code", filemoon_code).limit(1).execute()
+        if response.data and len(response.data) > 0:
+            return response.data[0]
+        return None
         
     except APIError as e:
         if "JSON object requested" in str(e):
@@ -737,14 +771,15 @@ async def get_or_create_bot_session(admin_id: int) -> Dict[str, Any]:
         supabase = get_supabase()
         
         # Recherche session existante
-        response = supabase.table("bot_sessions").select("*").eq("admin_id", admin_id).single().execute()
+        response = supabase.table("bot_sessions").select("*").eq("admin_id", admin_id).limit(1).execute()
         
-        if response.data:
+        # CORRECTION: response.data est une liste
+        if response.data and len(response.data) > 0:
             # Mise à jour last_activity
             supabase.table("bot_sessions").update({
                 "last_activity": datetime.utcnow().isoformat()
             }).eq("admin_id", admin_id).execute()
-            return response.data
+            return response.data[0]
         
         # Création nouvelle session
         session_data = {
@@ -757,7 +792,7 @@ async def get_or_create_bot_session(admin_id: int) -> Dict[str, Any]:
         }
         
         insert_response = supabase.table("bot_sessions").insert(session_data).execute()
-        return insert_response.data[0] if insert_response.data else session_data
+        return insert_response.data[0] if insert_response.data and len(insert_response.data) > 0 else session_data
         
     except Exception as e:
         logger.error(f"Erreur session bot: {e}")
