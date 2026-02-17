@@ -1,8 +1,8 @@
 pyrogram==2.0.106
 tgcrypto==1.2.5
 aiohttp==3.9.1
-httpx==0.23.3
-supabase>=2.0.0  # Upgrade ici : supporte pydantic>=2.0, remplace gotrue 0.5.x par version compatible
+# httpx==0.23.3   ← Commenté ou supprimé : pip choisira une version >=0.24 compatible avec supabase 2.x
+supabase>=2.0.0
 python-dotenv==1.0.0
 requests==2.31.0
 loguru==0.7.2
