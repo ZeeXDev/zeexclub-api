@@ -6,3 +6,5 @@ supabase==0.7.1
 python-dotenv==1.0.0
 requests==2.31.0
 loguru==0.7.2
+pydantic>=2.0
+pydantic-settings>=2.0
