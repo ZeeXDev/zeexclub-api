@@ -104,10 +104,13 @@ def setup_commands(bot: Client):
    `/addf`
    Puis choisissez le show et le numéro de saison.
 
-3️⃣ **Ajouter un épisode**
+3️⃣ **Ajouter un épisode** (séries)
    `/add`
    Envoyez la vidéo avec caption: `S01E01` ou `Épisode 1`
-   Le bot détecte automatiquement la saison et l'épisode.
+
+4️⃣ **Ajouter un film** (films)
+   `/add`
+   Envoyez la vidéo SANS caption spéciale (le film est unique)
 
 4️⃣ **Finaliser l'upload**
    `/done`
@@ -115,16 +118,17 @@ def setup_commands(bot: Client):
 
 **Gestion:**
 
-• `/view [ID]` - Voir les détails d'un show
+• `/view [ID]` - Voir les détails d'un show et ajouter du contenu
 • `/docs` - Lister tous les shows (avec pagination)
 • `/cancel` - Annuler l'opération en cours
 
-**Format des captions:**
+**Format des captions (séries uniquement):**
 - `S01E01` ou `s1e1` → Saison 1, Épisode 1
 - `Épisode 5` → Saison en cours, Épisode 5
 - `2x15` → Saison 2, Épisode 15
 
 **Conseils:**
+- Les films n'ont pas besoin de caption spéciale
 - Les vidéos doivent être envoyées en tant que document ou vidéo
 - Attendez que chaque opération soit terminée avant de commencer la suivante
 - Utilisez /cancel si vous êtes bloqué
@@ -225,11 +229,11 @@ def setup_commands(bot: Client):
             await message.reply(f"❌ Erreur: {str(e)}")
     
     # =========================================================================
-    # COMMANDE /ADD
+    # COMMANDE /ADD - MODIFIÉE POUR FILMS ET SÉRIES
     # =========================================================================
     @bot.on_message(filters.command("add") & filters.private)
     async def add_command(client: Client, message: Message):
-        """Prépare l'ajout d'un épisode"""
+        """Prépare l'ajout d'un épisode (série) ou d'une source (film)"""
         user_id = message.from_user.id
         
         if not is_admin(user_id):
@@ -244,15 +248,25 @@ def setup_commands(bot: Client):
         
         user_sessions[user_id]["state"] = "waiting_video"
         
-        await message.reply(
-            f"📤 Envoi d'épisode pour: *{current_show['title']}*\n\n"
-            f"Envoyez la vidéo avec caption:\n"
-            f"• `S01E01` ou `s1e1`\n"
-            f"• `Épisode 5`\n"
-            f"• `2x15` (saison 2, ép 15)\n\n"
-            f"_Envoyez plusieurs vidéos successivement, puis /done pour uploader._",
-            parse_mode=ParseMode.MARKDOWN
-        )
+        # Message différent selon le type
+        if current_show["type"] == "movie":
+            await message.reply(
+                f"📤 Ajout du film: *{current_show['title']}*\n\n"
+                f"Envoyez la vidéo du film.\n"
+                f"_Pas besoin de caption spéciale pour les films._\n\n"
+                f"Le film sera ajouté directement.",
+                parse_mode=ParseMode.MARKDOWN
+            )
+        else:
+            await message.reply(
+                f"📤 Envoi d'épisode pour: *{current_show['title']}*\n\n"
+                f"Envoyez la vidéo avec caption:\n"
+                f"• `S01E01` ou `s1e1`\n"
+                f"• `Épisode 5`\n"
+                f"• `2x15` (saison 2, ép 15)\n\n"
+                f"_Envoyez plusieurs vidéos successivement, puis /done pour uploader._",
+                parse_mode=ParseMode.MARKDOWN
+            )
     
     # =========================================================================
     # COMMANDE /ADDF
@@ -294,22 +308,29 @@ def setup_commands(bot: Client):
         )
     
     # =========================================================================
-    # COMMANDE /VIEW
+    # COMMANDE /VIEW - AMÉLIORÉE AVEC BOUTONS D'ACTION
     # =========================================================================
     @bot.on_message(filters.command("view") & filters.private)
     async def view_command(client: Client, message: Message):
-        """Affiche les détails d'un show"""
+        """Affiche les détails d'un show avec boutons d'action"""
         user_id = message.from_user.id
         
         if not is_admin(user_id):
             return
         
         if len(message.command) < 2:
-            await message.reply("❌ Usage: `/view <ID>`\nExemple: `/view abc123`")
-            return
+            # Si pas d'ID fourni, utiliser le show courant de la session
+            session = user_sessions.get(user_id, {})
+            current_show = session.get("data", {}).get("current_show")
+            if current_show:
+                show_id = current_show["id"]
+            else:
+                await message.reply("❌ Usage: `/view <ID>`\nExemple: `/view abc123`\nOu utilisez d'abord /create pour sélectionner un show.")
+                return
+        else:
+            show_id = message.command[1]
         
-        show_id = message.command[1]
-        await show_show_details(client, message, show_id)
+        await show_show_details_with_actions(client, message, show_id, user_id)
     
     # =========================================================================
     # COMMANDE /DOCS
@@ -363,13 +384,13 @@ def setup_commands(bot: Client):
         await message.reply("✅ Tous les uploads sont terminés!")
     
     # =========================================================================
-    # HANDLER VIDÉOS (pour /add)
+    # HANDLER VIDÉOS - MODIFIÉ POUR FILMS ET SÉRIES
     # =========================================================================
     @bot.on_message(
         (filters.video | filters.document) & filters.private
     )
     async def handle_video_upload(client: Client, message: Message):
-        """Gère la réception d'une vidéo pour ajout d'épisode"""
+        """Gère la réception d'une vidéo pour ajout d'épisode ou film"""
         user_id = message.from_user.id
         
         if not is_admin(user_id):
@@ -377,14 +398,13 @@ def setup_commands(bot: Client):
         
         if not is_waiting_video(user_id):
             await message.reply(
-                "⚠️ Envoyez d'abord /add pour ajouter un épisode.\n"
+                "⚠️ Envoyez d'abord /add pour ajouter un contenu.\n"
                 "Ou utilisez /create pour créer un show."
             )
             return
         
         session = user_sessions.get(user_id, {})
         current_show = session["data"].get("current_show")
-        current_season = session["data"].get("current_season")
         
         if not current_show:
             await message.reply("❌ Erreur: Aucun show sélectionné.")
@@ -403,8 +423,81 @@ def setup_commands(bot: Client):
             await message.reply("❌ Format non supporté.")
             return
         
+        # TRAITEMENT DIFFÉRENT SELON LE TYPE
+        if current_show["type"] == "movie":
+            # FILM: Créer directement une source vidéo sans saison/épisode
+            await handle_movie_upload(client, message, user_id, current_show, file_id, file_size, duration)
+        else:
+            # SÉRIE: Logique existante avec saison/épisode
+            await handle_series_upload(client, message, user_id, current_show, file_id, file_size, duration, message.caption)
+
+
+async def handle_movie_upload(client, message, user_id, current_show, file_id, file_size, duration):
+    """Gère l'upload d'un film (sans saison/épisode)"""
+    try:
+        # Pour les films, on crée un "épisode spécial" saison 0 épisode 0
+        # ou on modifie la structure pour supporter les films sans épisodes
+        
+        # Récupérer ou créer la saison 0 (spéciale pour films)
+        season = await get_season_by_number(current_show["id"], 0)
+        if not season:
+            season = await create_season({
+                "show_id": current_show["id"],
+                "season_number": 0,
+                "name": "Film"
+            })
+        
+        # Créer l'épisode 0 (le film lui-même)
+        episode = await create_episode({
+            "season_id": season["id"],
+            "episode_number": 0,
+            "title": current_show["title"]  # Titre du film
+        })
+        
+        # Créer la source vidéo
+        await create_video_source({
+            "episode_id": episode["id"],
+            "server_name": "telegram",
+            "link": f"/api/stream/telegram/{file_id}",
+            "file_id": file_id,
+            "file_size": file_size,
+            "duration": duration,
+            "quality": "HD",
+            "is_active": True
+        })
+        
+        # Ajout pending uploads
+        if "pending_uploads" not in user_sessions[user_id]["data"]:
+            user_sessions[user_id]["data"]["pending_uploads"] = []
+        
+        user_sessions[user_id]["data"]["pending_uploads"].append({
+            "file_id": file_id,
+            "episode_id": episode["id"],
+            "title": f"{current_show['title']} (Film)"
+        })
+        
+        count = len(user_sessions[user_id]["data"]["pending_uploads"])
+        
+        await message.reply(
+            f"✅ Film ajouté! (Total: {count})\n\n"
+            f"🎬 *{current_show['title']}*\n"
+            f"📁 Saison 0 (Film)\n\n"
+            f"Tapez /done pour uploader vers Filemoon.",
+            parse_mode=ParseMode.MARKDOWN
+        )
+        
+    except Exception as e:
+        logger.error(f"Erreur handle_movie: {e}")
+        await message.reply(f"❌ Erreur: {str(e)}")
+
+
+async def handle_series_upload(client, message, user_id, current_show, file_id, file_size, duration, caption):
+    """Gère l'upload d'un épisode de série (logique existante)"""
+    try:
+        session = user_sessions.get(user_id, {})
+        current_season = session["data"].get("current_season")
+        
         # Parsing de la caption
-        caption = message.caption or ""
         season_num, episode_num = parse_season_episode(caption)
         
         if season_num is None:
@@ -417,62 +510,61 @@ def setup_commands(bot: Client):
             )
             return
         
-        try:
-            # Création saison si besoin
-            season = await get_season_by_number(current_show["id"], season_num)
-            if not season:
-                season = await create_season({
-                    "show_id": current_show["id"],
-                    "season_number": season_num,
-                    "name": f"Saison {season_num}"
-                })
-                await message.reply(f"📁 Saison {season_num} créée.")
-            
-            # Création épisode
-            episode = await create_episode({
-                "season_id": season["id"],
-                "episode_number": episode_num,
-                "title": caption if caption and not caption.startswith("S") else f"Épisode {episode_num}"
+        # Création saison si besoin
+        season = await get_season_by_number(current_show["id"], season_num)
+        if not season:
+            season = await create_season({
+                "show_id": current_show["id"],
+                "season_number": season_num,
+                "name": f"Saison {season_num}"
             })
-            
-            # Source Telegram
-            await create_video_source({
-                "episode_id": episode["id"],
-                "server_name": "telegram",
-                "link": f"/api/stream/telegram/{file_id}",
-                "file_id": file_id,
-                "file_size": file_size,
-                "duration": duration,
-                "quality": "HD",
-                "is_active": True
-            })
-            
-            # Ajout pending uploads
-            if "pending_uploads" not in user_sessions[user_id]["data"]:
-                user_sessions[user_id]["data"]["pending_uploads"] = []
-            
-            user_sessions[user_id]["data"]["pending_uploads"].append({
-                "file_id": file_id,
-                "episode_id": episode["id"],
-                "title": f"{current_show['title']} S{season_num:02d}E{episode_num:02d}"
-            })
-            
-            user_sessions[user_id]["data"]["current_season"] = season
-            
-            count = len(user_sessions[user_id]["data"]["pending_uploads"])
-            
-            await message.reply(
-                f"✅ Épisode ajouté! (Total: {count})\n\n"
-                f"📺 *{current_show['title']}*\n"
-                f"📁 Saison {season_num}\n"
-                f"🎬 Épisode {episode_num}\n\n"
-                f"Envoyez d'autres épisodes ou tapez /done pour uploader.",
-                parse_mode=ParseMode.MARKDOWN
-            )
-            
-        except Exception as e:
-            logger.error(f"Erreur handle_video: {e}")
-            await message.reply(f"❌ Erreur: {str(e)}")
+            await message.reply(f"📁 Saison {season_num} créée.")
+        
+        # Création épisode
+        episode = await create_episode({
+            "season_id": season["id"],
+            "episode_number": episode_num,
+            "title": caption if caption and not caption.startswith("S") else f"Épisode {episode_num}"
+        })
+        
+        # Source Telegram
+        await create_video_source({
+            "episode_id": episode["id"],
+            "server_name": "telegram",
+            "link": f"/api/stream/telegram/{file_id}",
+            "file_id": file_id,
+            "file_size": file_size,
+            "duration": duration,
+            "quality": "HD",
+            "is_active": True
+        })
+        
+        # Ajout pending uploads
+        if "pending_uploads" not in user_sessions[user_id]["data"]:
+            user_sessions[user_id]["data"]["pending_uploads"] = []
+        
+        user_sessions[user_id]["data"]["pending_uploads"].append({
+            "file_id": file_id,
+            "episode_id": episode["id"],
+            "title": f"{current_show['title']} S{season_num:02d}E{episode_num:02d}"
+        })
+        
+        user_sessions[user_id]["data"]["current_season"] = season
+        
+        count = len(user_sessions[user_id]["data"]["pending_uploads"])
+        
+        await message.reply(
+            f"✅ Épisode ajouté! (Total: {count})\n\n"
+            f"📺 *{current_show['title']}*\n"
+            f"📁 Saison {season_num}\n"
+            f"🎬 Épisode {episode_num}\n\n"
+            f"Envoyez d'autres épisodes ou tapez /done pour uploader.",
+            parse_mode=ParseMode.MARKDOWN
+        )
+        
+    except Exception as e:
+        logger.error(f"Erreur handle_series: {e}")
+        await message.reply(f"❌ Erreur: {str(e)}")
 
 
 def setup_handlers(bot: Client):
@@ -507,6 +599,19 @@ def setup_handlers(bot: Client):
             elif data.startswith("docs_page_"):
                 page = int(data.split("_")[-1])
                 await update_shows_list(client, callback, page)
+            
+            # NOUVEAUX CALLBACKS POUR /view
+            elif data.startswith("view_add_"):
+                show_id = data.split("_")[-1]
+                await callback_view_add(client, callback, user_id, show_id)
+            
+            elif data.startswith("view_addf_"):
+                show_id = data.split("_")[-1]
+                await callback_view_addf(client, callback, user_id, show_id)
+            
+            elif data.startswith("view_refresh_"):
+                show_id = data.split("_")[-1]
+                await callback_view_refresh(client, callback, user_id, show_id)
             
             # IMPORTANT: Répondre au callback
             await callback.answer()
@@ -578,11 +683,21 @@ async def process_show_selection(client: Client, callback: CallbackQuery, user_i
             f"📅 {details.get('release_date', 'N/A')}\n"
             f"⭐ {details.get('vote_average', 'N/A')}/10\n"
             f"🆔 `{created_show['id']}`\n\n"
-            f"• `/add` - Ajouter des épisodes\n"
-            f"• `/addf` - Gérer les saisons"
+            f"• `/add` - Ajouter du contenu\n"
+            f"• `/view` - Voir les détails et gérer"
         )
         
-        await callback.message.edit_text(text, parse_mode=ParseMode.MARKDOWN)
+        # Boutons d'action rapide
+        buttons = [
+            [InlineKeyboardButton("➕ Ajouter contenu", callback_data=f"view_add_{created_show['id']}")],
+            [InlineKeyboardButton("📊 Voir détails", callback_data=f"view_refresh_{created_show['id']}")]
+        ]
+        
+        await callback.message.edit_text(
+            text,
+            reply_markup=InlineKeyboardMarkup(buttons),
+            parse_mode=ParseMode.MARKDOWN
+        )
         
     except Exception as e:
         logger.error(f"Erreur process_show_selection: {e}")
@@ -623,13 +738,20 @@ async def process_season_creation(client: Client, callback: CallbackQuery, user_
         await callback.message.edit_text(f"❌ Erreur: {str(e)}")
 
 
-async def show_show_details(client: Client, message: Message, show_id: str):
-    """Affiche les détails d'un show"""
+# ============================================================================
+# NOUVELLES FONCTIONS POUR /view AMÉLIORÉ
+# ============================================================================
+
+async def show_show_details_with_actions(client: Client, message: Message, show_id: str, user_id: int):
+    """Affiche les détails d'un show avec boutons d'action"""
     try:
         show = await get_show_by_id(show_id)
         if not show:
             await message.reply("❌ Show non trouvé.")
             return
+        
+        # Mettre à jour la session avec ce show
+        user_sessions[user_id]["data"]["current_show"] = show
         
         seasons = await get_seasons_by_show(show_id)
         total_episodes = 0
@@ -638,6 +760,7 @@ async def show_show_details(client: Client, message: Message, show_id: str):
             episodes = await get_episodes_by_season(season["id"])
             total_episodes += len(episodes)
         
+        # Construction du texte
         text = (
             f"📊 *{show['title']}*\n"
             f"{'🎬 Film' if show['type'] == 'movie' else '📺 Série'}\n"
@@ -649,11 +772,102 @@ async def show_show_details(client: Client, message: Message, show_id: str):
             f"🆔 `{show_id}`"
         )
         
-        await message.reply(text, parse_mode=ParseMode.MARKDOWN)
+        # Boutons d'action selon le type
+        buttons = []
+        
+        if show["type"] == "movie":
+            # Pour les films: bouton ajouter source
+            buttons.append([InlineKeyboardButton("➕ Ajouter le film", callback_data=f"view_add_{show_id}")])
+        else:
+            # Pour les séries: boutons saison et épisode
+            buttons.append([InlineKeyboardButton("➕ Ajouter épisode", callback_data=f"view_add_{show_id}")])
+            buttons.append([InlineKeyboardButton("📁 Gérer saisons", callback_data=f"view_addf_{show_id}")])
+        
+        buttons.append([InlineKeyboardButton("🔄 Rafraîchir", callback_data=f"view_refresh_{show_id}")])
+        
+        await message.reply(
+            text,
+            reply_markup=InlineKeyboardMarkup(buttons),
+            parse_mode=ParseMode.MARKDOWN
+        )
         
     except Exception as e:
-        logger.error(f"Erreur show_details: {e}")
+        logger.error(f"Erreur show_details_with_actions: {e}")
         await message.reply(f"❌ Erreur: {str(e)}")
+
+
+async def callback_view_add(client: Client, callback: CallbackQuery, user_id: int, show_id: str):
+    """Callback pour ajouter du contenu depuis /view"""
+    try:
+        show = await get_show_by_id(show_id)
+        if not show:
+            await callback.answer("Show non trouvé", show_alert=True)
+            return
+        
+        # Mettre à jour la session
+        user_sessions[user_id]["data"]["current_show"] = show
+        user_sessions[user_id]["state"] = "waiting_video"
+        
+        if show["type"] == "movie":
+            await callback.message.edit_text(
+                f"📤 Ajout du film: *{show['title']}*\n\n"
+                f"Envoyez la vidéo du film maintenant.",
+                parse_mode=ParseMode.MARKDOWN
+            )
+        else:
+            await callback.message.edit_text(
+                f"📤 Ajout d'épisode pour: *{show['title']}*\n\n"
+                f"Envoyez la vidéo avec caption (S01E01, Épisode 5, etc.)",
+                parse_mode=ParseMode.MARKDOWN
+            )
+        
+    except Exception as e:
+        logger.error(f"Erreur callback_view_add: {e}")
+        await callback.answer("❌ Erreur", show_alert=True)
+
+
+async def callback_view_addf(client: Client, callback: CallbackQuery, user_id: int, show_id: str):
+    """Callback pour gérer les saisons depuis /view"""
+    try:
+        show = await get_show_by_id(show_id)
+        if not show or show["type"] == "movie":
+            await callback.answer("Pas de saisons pour les films", show_alert=True)
+            return
+        
+        # Mettre à jour la session
+        user_sessions[user_id]["data"]["current_show"] = show
+        
+        # Simuler la commande /addf
+        seasons = await get_seasons_by_show(show_id)
+        next_season = len(seasons) + 1
+        
+        buttons = [
+            [InlineKeyboardButton(f"Créer Saison {next_season}", callback_data=f"season_create_{next_season}")],
+            [InlineKeyboardButton("Autre numéro...", callback_data="season_custom")],
+            [InlineKeyboardButton("❌ Annuler", callback_data="season_cancel")]
+        ]
+        
+        await callback.message.edit_text(
+            f"📁 Gestion des saisons pour *{show['title']}*\n\n"
+            f"Saisons existantes: {len(seasons)}\n"
+            f"Quelle action souhaitez-vous?",
+            reply_markup=InlineKeyboardMarkup(buttons),
+            parse_mode=ParseMode.MARKDOWN
+        )
+        
+    except Exception as e:
+        logger.error(f"Erreur callback_view_addf: {e}")
+        await callback.answer("❌ Erreur", show_alert=True)
+
+
+async def callback_view_refresh(client: Client, callback: CallbackQuery, user_id: int, show_id: str):
+    """Callback pour rafraîchir la vue"""
+    try:
+        await show_show_details_with_actions(client, callback.message, show_id, user_id)
+        await callback.answer("✅ Rafraîchi")
+    except Exception as e:
+        logger.error(f"Erreur callback_view_refresh: {e}")
+        await callback.answer("❌ Erreur", show_alert=True)
 
 
 async def list_shows_paginated(client: Client, message: Message, page: int = 1):

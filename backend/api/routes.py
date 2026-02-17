@@ -600,8 +600,9 @@ import asyncio
 # Fonction helper manquante
 async def get_episode_count_by_season(season_id: str) -> int:
     """Compte le nombre d'épisodes dans une saison"""
-    from database.queries import supabase
+    from database.queries import get_supabase
     try:
+        supabase = get_supabase()
         result = supabase.table("episodes").select("id", count="exact").eq("season_id", season_id).execute()
         return result.count if hasattr(result, 'count') else len(result.data)
     except:
