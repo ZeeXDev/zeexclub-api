@@ -2,7 +2,7 @@ pyrogram==2.0.106
 tgcrypto==1.2.5
 aiohttp==3.9.1
 httpx==0.23.3
-supabase==0.7.1
+supabase>=2.0.0  # Upgrade ici : supporte pydantic>=2.0, remplace gotrue 0.5.x par version compatible
 python-dotenv==1.0.0
 requests==2.31.0
 loguru==0.7.2
