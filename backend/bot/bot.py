@@ -6,7 +6,15 @@ Gestionnaire principal du bot - Version Web Service pour Render
 import logging
 import asyncio
 import os
+import sys
 from typing import Optional
+
+# Fix Python 3.14 event loop si nécessaire
+if sys.version_info >= (3, 14):
+    try:
+        asyncio.get_event_loop()
+    except RuntimeError:
+        asyncio.set_event_loop(asyncio.new_event_loop())
 
 from pyrogram import Client, idle
 from pyrogram.types import BotCommand
@@ -20,6 +28,7 @@ try:
     from config import settings
     from bot.commands import setup_commands, setup_handlers
     from bot.handlers import setup_additional_handlers
+    from database.supabase_client import init_supabase, close_supabase
 except ImportError:
     # Fallback si exécuté différemment
     import sys
@@ -27,6 +36,7 @@ except ImportError:
     from config import settings
     from bot.commands import setup_commands, setup_handlers
     from bot.handlers import setup_additional_handlers
+    from database.supabase_client import init_supabase, close_supabase
 
 logger = logging.getLogger(__name__)
 
@@ -65,6 +75,14 @@ async def start_bot():
     
     # Démarrer le serveur web d'abord (pour que Render détecte le service UP)
     web_runner = await start_web_server()
+    
+    # Initialiser Supabase AVANT le bot
+    try:
+        await init_supabase()
+        logger.info("✅ Connexion Supabase établie")
+    except Exception as e:
+        logger.error(f"❌ Erreur Supabase: {e}")
+        raise
     
     try:
         logger.info("🤖 Initialisation du bot Telegram...")
@@ -128,7 +146,7 @@ async def start_bot():
         except Exception as e:
             logger.warning(f"⚠️ Commandes non mises à jour: {e}")
         
-        # Garder le bot en vie (idle bloque mais le serveur web tourne déjà)
+        # Garder le bot en vie
         await idle()
         
     except Exception as e:
@@ -137,6 +155,7 @@ async def start_bot():
     finally:
         await stop_bot()
         await web_runner.cleanup()
+        await close_supabase()
 
 
 async def stop_bot():
