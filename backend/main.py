@@ -1,7 +1,6 @@
 """
 Point d'entrée principal ZeeXClub API
-FastAPI application avec gestion du bot Telegram
-Optimisé pour Koyeb
+FastAPI application - Bot Telegram séparé sur Render
 """
 
 import asyncio
@@ -19,12 +18,17 @@ import uvicorn
 try:
     from config import settings, validate_config
     from api.routes import router as api_router
-    from bot.bot import start_bot, stop_bot
-    from database.supabase_client import init_supabase, close_supabase
     CONFIG_AVAILABLE = True
 except ImportError as e:
     CONFIG_AVAILABLE = False
     print(f"⚠️  Import error: {e}")
+
+# Import bot uniquement si activé
+try:
+    from bot.bot import start_bot, stop_bot
+    BOT_AVAILABLE = True
+except ImportError:
+    BOT_AVAILABLE = False
 
 
 # Configuration logging
@@ -39,7 +43,6 @@ logger = logging.getLogger("zeexclub")
 async def lifespan(app: FastAPI):
     """
     Gestionnaire de cycle de vie de l'application
-    Démarre le bot Telegram et initialise les connexions au démarrage
     """
     logger.info("🚀 Démarrage de ZeeXClub API...")
     
@@ -54,12 +57,12 @@ async def lifespan(app: FastAPI):
         logger.info("✅ Configuration validée")
     except ValueError as e:
         logger.error(f"❌ Erreur configuration: {e}")
-        # Ne pas bloquer le démarrage sur Koyeb si config incomplète
         if os.getenv("KOYEB_DEPLOYMENT"):
             logger.warning("⚠️  Mode Koyeb - continuation malgré erreur config")
     
     # Initialisation Supabase
     try:
+        from database.supabase_client import init_supabase, close_supabase
         await init_supabase()
         logger.info("✅ Connexion Supabase établie")
     except Exception as e:
@@ -67,15 +70,21 @@ async def lifespan(app: FastAPI):
         if not os.getenv("KOYEB_DEPLOYMENT"):
             raise
     
-    # Démarrage du bot Telegram dans une tâche séparée
+    # Démarrage du bot UNIQUEMENT si ENABLE_BOT=true (Render)
     bot_task = None
-    try:
-        bot_task = asyncio.create_task(start_bot())
-        logger.info("🤖 Bot Telegram démarré")
-    except Exception as e:
-        logger.error(f"❌ Erreur démarrage bot: {e}")
+    enable_bot = os.getenv("ENABLE_BOT", "false").lower() == "true"
     
-    yield  # L'application est prête à recevoir des requêtes
+    if enable_bot and BOT_AVAILABLE:
+        try:
+            bot_task = asyncio.create_task(start_bot())
+            logger.info("🤖 Bot Telegram démarré sur Render")
+        except Exception as e:
+            logger.error(f"❌ Erreur démarrage bot: {e}")
+            logger.exception(e)
+    else:
+        logger.info(f"🤖 Bot désactivé (ENABLE_BOT={enable_bot}, BOT_AVAILABLE={BOT_AVAILABLE})")
+    
+    yield  # L'application est prête
     
     # Nettoyage à l'arrêt
     logger.info("🛑 Arrêt de ZeeXClub API...")
@@ -86,12 +95,17 @@ async def lifespan(app: FastAPI):
             await bot_task
         except asyncio.CancelledError:
             pass
-        await stop_bot()
+        if BOT_AVAILABLE:
+            await stop_bot()
         logger.info("🤖 Bot Telegram arrêté")
     
     if CONFIG_AVAILABLE:
-        await close_supabase()
-        logger.info("✅ Connexions fermées")
+        try:
+            from database.supabase_client import close_supabase
+            await close_supabase()
+            logger.info("✅ Connexions fermées")
+        except:
+            pass
 
 
 # Création de l'application FastAPI
@@ -108,6 +122,7 @@ app = FastAPI(
 def get_cors_origins():
     """Récupère les origines CORS depuis les variables d'environnement"""
     origins = [
+        "https://zeexclub.vercel.app",  # CORRIGÉ: https://
         "http://localhost:3000",
         "http://localhost:5500",
         "http://127.0.0.1:5500",
@@ -122,6 +137,9 @@ def get_cors_origins():
         if frontend_url.startswith("https://"):
             origins.append(frontend_url.replace("https://", "https://www."))
             origins.append(frontend_url.replace("https://www.", "https://"))
+        elif frontend_url.startswith("http://"):
+            origins.append(frontend_url.replace("http://", "http://www."))
+            origins.append(frontend_url.replace("http://www.", "http://"))
     
     # Origines supplémentaires depuis env (séparées par virgule)
     extra_origins = os.getenv("EXTRA_CORS_ORIGINS", "")
@@ -155,50 +173,34 @@ else:
 
 
 # ==========================================
-# Endpoints de base - CORRIGÉS pour UptimeRobot
+# Endpoints de base
 # ==========================================
 
 @app.api_route("/", methods=["GET", "HEAD", "OPTIONS"])
 async def root():
-    """
-    Endpoint racine / health check
-    Supporte GET, HEAD et OPTIONS pour UptimeRobot
-    """
+    """Endpoint racine / health check"""
     return {
         "status": "online",
         "service": "ZeeXClub API",
         "version": "1.0.0",
         "environment": "production" if os.getenv("KOYEB_DEPLOYMENT") else "development",
-        "config_loaded": CONFIG_AVAILABLE
+        "config_loaded": CONFIG_AVAILABLE,
+        "bot_enabled": os.getenv("ENABLE_BOT", "false").lower() == "true"
     }
 
 
 @app.api_route("/health", methods=["GET", "HEAD", "OPTIONS"])
 async def health_check():
-    """
-    Health check détaillé
-    Supporte GET, HEAD et OPTIONS pour UptimeRobot
-    """
+    """Health check détaillé"""
     health_data = {
         "status": "healthy",
-        "timestamp": asyncio.get_event_loop().time(),
         "services": {
             "api": "up",
             "config": "loaded" if CONFIG_AVAILABLE else "missing",
             "database": "unknown",
-            "bot": "unknown"
+            "bot": "enabled" if os.getenv("ENABLE_BOT", "false").lower() == "true" else "disabled"
         }
     }
-    
-    # Vérifier Supabase si disponible
-    if CONFIG_AVAILABLE:
-        try:
-            # Test rapide de connexion ici si possible
-            health_data["services"]["database"] = "connected"
-        except:
-            health_data["services"]["database"] = "disconnected"
-            health_data["status"] = "degraded"
-    
     return health_data
 
 
@@ -259,14 +261,14 @@ async def log_requests(request: Request, call_next):
     return response
 
 
-# Point d'entrée pour Koyeb (utilise $PORT)
+# Point d'entrée pour Koyeb
 if __name__ == "__main__":
     port = int(os.getenv("PORT", 8000))
     uvicorn.run(
         "main:app",
         host="0.0.0.0",
         port=port,
-        reload=False,  # Désactivé en production
-        workers=1,     # Koyeb gère le scaling
+        reload=False,
+        workers=1,
         log_level="info"
     )
