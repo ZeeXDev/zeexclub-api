@@ -19,7 +19,7 @@ class Settings(BaseSettings):
     APP_NAME: str = "ZeeXClub API"
     DEBUG: bool = False
     VERSION: str = "1.0.0"
-    FRONTEND_URL: str = "http://localhost:3000"
+    FRONTEND_URL: str = "https://zeexclub.vercel.app"
     
     # Sécurité - OBLIGATOIRE
     SECRET_KEY: str = Field(..., min_length=32, description="JWT secret key")
