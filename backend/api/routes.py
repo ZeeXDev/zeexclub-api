@@ -186,13 +186,84 @@ async def get_show_episodes_endpoint(
             raise HTTPException(status_code=404, detail="Show non trouvé")
         
         if show["type"] == "movie":
-            # Pour les films, retourner les sources directement
-            sources = await get_episode_sources(str(show_id))
-            return {
-                "success": True,
-                "type": "movie",
-                "sources": sources
-            }
+            # 🔧 CORRECTION : Pour les films, récupérer les sources via seasons → episodes
+            from database.queries import get_supabase
+            
+            try:
+                supabase = get_supabase()
+                
+                # Récupérer la saison 0 du film
+                season_result = supabase.table("seasons")\
+                    .select("id")\
+                    .eq("show_id", str(show_id))\
+                    .eq("season_number", 0)\
+                    .execute()
+                
+                if not season_result.data:
+                    return {
+                        "success": True,
+                        "type": "movie",
+                        "sources": []
+                    }
+                
+                season_id = season_result.data[0]["id"]
+                
+                # Récupérer l'épisode de la saison 0
+                episode_result = supabase.table("episodes")\
+                    .select("id")\
+                    .eq("season_id", season_id)\
+                    .limit(1)\
+                    .execute()
+                
+                if not episode_result.data:
+                    return {
+                        "success": True,
+                        "type": "movie",
+                        "sources": []
+                    }
+                
+                episode_id = episode_result.data[0]["id"]
+                
+                # Récupérer les sources de cet épisode
+                sources_result = supabase.table("video_sources")\
+                    .select("*")\
+                    .eq("episode_id", episode_id)\
+                    .eq("is_active", True)\
+                    .execute()
+                
+                # Formater les sources pour le frontend
+                sources = []
+                for source in sources_result.data:
+                    formatted = {
+                        "id": source["id"],
+                        "server": source["server_name"],
+                        "quality": source.get("quality", "HD"),
+                        "language": source.get("language", "FR"),
+                        "is_active": source.get("is_active", True)
+                    }
+                    
+                    if source["server_name"] == "filemoon" and source.get("filemoon_code"):
+                        formatted["embed_url"] = f"{settings.FILEMOON_PLAYER_URL}{source['filemoon_code']}"
+                        formatted["direct_link"] = None
+                    else:
+                        formatted["embed_url"] = None
+                        formatted["direct_link"] = source.get("link", f"/api/stream/telegram/{source.get('file_id', '')}")
+                    
+                    sources.append(formatted)
+                
+                return {
+                    "success": True,
+                    "type": "movie",
+                    "sources": sources
+                }
+                
+            except Exception as e:
+                logger.error(f"Erreur récupération sources film: {str(e)}")
+                return {
+                    "success": True,
+                    "type": "movie",
+                    "sources": []
+                }
         
         # Pour les séries, récupérer par saison
         if season:
