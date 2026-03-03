@@ -26,10 +26,10 @@ class CatalogPage {
         const params = new URLSearchParams(window.location.search);
         
         this.currentFilters = {
-            type: params.get('type') || null,
-            genre: params.get('genre') || null,
-            year: params.get('year') || null,
-            search: params.get('search') || null,
+            type: params.get('type') || undefined,
+            genre: params.get('genre') || undefined,
+            year: params.get('year') || undefined,
+            search: params.get('search') || undefined,
             trending: params.get('trending') === 'true',
             recent: params.get('recent') === 'true'
         };
@@ -58,7 +58,6 @@ class CatalogPage {
     }
 
     setupFilters() {
-        // Remplir les filtres si nécessaire
         this.loadGenres();
     }
 
@@ -67,7 +66,6 @@ class CatalogPage {
             const response = await api.getGenres();
             const genres = response.data || [];
             
-            // Peupler le dropdown de genres si présent
             const genreSelect = document.getElementById('genreFilter');
             if (genreSelect) {
                 genreSelect.innerHTML = '<option value="">Tous les genres</option>' +
@@ -101,15 +99,20 @@ class CatalogPage {
                     this.currentFilters.type || 'all', 
                     'week'
                 );
-                response = { data: response.data }; // Normalisation
+                response = { data: response.data };
             } else if (this.currentFilters.recent) {
                 response = await api.getRecent(this.currentFilters.type);
             } else {
+                // ✅ On n'envoie que les params qui ont une vraie valeur
                 const params = {
                     page: this.currentPage,
                     limit: APP_CONFIG.itemsPerPage,
-                    ...this.currentFilters
                 };
+
+                if (this.currentFilters.type)  params.type  = this.currentFilters.type;
+                if (this.currentFilters.genre) params.genre = this.currentFilters.genre;
+                if (this.currentFilters.year)  params.year  = this.currentFilters.year;
+
                 response = await api.getShows(params);
             }
 
@@ -176,14 +179,12 @@ class CatalogPage {
 
         let html = '';
         
-        // Bouton précédent
         if (this.currentPage > 1) {
             html += `<button class="page-btn" onclick="catalog.goToPage(${this.currentPage - 1})">
                 <i class="fas fa-chevron-left"></i>
             </button>`;
         }
 
-        // Pages
         const startPage = Math.max(1, this.currentPage - 2);
         const endPage = Math.min(this.totalPages, this.currentPage + 2);
 
@@ -202,7 +203,6 @@ class CatalogPage {
             html += `<button class="page-btn" onclick="catalog.goToPage(${this.totalPages})">${this.totalPages}</button>`;
         }
 
-        // Bouton suivant
         if (this.currentPage < this.totalPages) {
             html += `<button class="page-btn" onclick="catalog.goToPage(${this.currentPage + 1})">
                 <i class="fas fa-chevron-right"></i>
@@ -219,16 +219,16 @@ class CatalogPage {
     }
 
     setupEventListeners() {
-        // Filtres
         const typeFilter = document.getElementById('typeFilter');
         const genreFilter = document.getElementById('genreFilter');
         const yearFilter = document.getElementById('yearFilter');
         const sortFilter = document.getElementById('sortFilter');
 
         const applyFilters = () => {
-            this.currentFilters.type = typeFilter?.value || null;
-            this.currentFilters.genre = genreFilter?.value || null;
-            this.currentFilters.year = yearFilter?.value || null;
+            // ✅ undefined au lieu de null pour éviter "&type=null" dans l'URL
+            this.currentFilters.type  = typeFilter?.value  || undefined;
+            this.currentFilters.genre = genreFilter?.value || undefined;
+            this.currentFilters.year  = yearFilter?.value  || undefined;
             this.currentPage = 1;
             this.loadCatalog();
         };
@@ -237,7 +237,6 @@ class CatalogPage {
         genreFilter?.addEventListener('change', applyFilters);
         yearFilter?.addEventListener('change', applyFilters);
         sortFilter?.addEventListener('change', () => {
-            // Implémenter le tri
             this.loadCatalog();
         });
     }
