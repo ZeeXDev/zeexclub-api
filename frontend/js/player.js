@@ -1,5 +1,5 @@
 /**
- * Page Lecteur - Lecture vidéo multi-serveurs
+ * Page Lecteur - Lecture vidéo multi-serveurs (CORRIGÉ)
  */
 
 import api from './api.js';
@@ -13,7 +13,8 @@ class PlayerPage {
         
         this.currentSource = null;
         this.sources = [];
-        this.player = null;
+        this.showData = null;
+        this.episodeData = null;
         
         this.init();
     }
@@ -29,67 +30,91 @@ class PlayerPage {
         try {
             if (this.episodeId) {
                 await this.loadEpisode(this.episodeId);
-            } else {
+            } else if (this.showId) {
                 await this.loadMovie(this.showId);
             }
         } catch (error) {
             console.error('Erreur chargement player:', error);
-            this.showError('Impossible de charger la vidéo');
+            this.showError('Impossible de charger la vidéo. Vérifiez votre connexion.');
+        } finally {
+            this.showLoading(false);
         }
     }
 
     async loadEpisode(episodeId) {
-        // Récupération des détails de l'épisode et des sources
-        const [episodeRes, sourcesRes] = await Promise.all([
-            api.getEpisode(episodeId),
-            api.getEpisodeSources(episodeId)
-        ]);
+        try {
+            const sourcesRes = await api.getEpisodeSources(episodeId);
+            
+            if (!sourcesRes || !sourcesRes.sources || sourcesRes.sources.length === 0) {
+                throw new Error('Aucune source disponible');
+            }
 
-        this.episodeData = episodeRes.data;
-        this.sources = sourcesRes.sources || [];
-        
-        this.renderPlayer();
-        this.renderSources();
-        this.renderEpisodeNav();
+            this.sources = sourcesRes.sources.filter(s => s.is_active);
+            this.episodeData = sourcesRes.episode || { title: 'Épisode' };
+            
+            if (this.sources.length === 0) {
+                throw new Error('Aucune source active');
+            }
+
+            this.renderPlayer();
+            this.renderSources();
+        } catch (error) {
+            console.error('Erreur loadEpisode:', error);
+            throw error;
+        }
     }
 
     async loadMovie(showId) {
-        // Pour les films, récupérer le show et ses sources
-        const showRes = await api.getShow(showId);
-        this.showData = showRes.data;
-        
-        // Récupérer les épisodes (pour un film, c'est la "saison 0")
-        const episodesRes = await api.getShowEpisodes(showId);
-        
-        if (episodesRes.type === 'movie' && episodesRes.sources) {
-            this.sources = episodesRes.sources;
-        } else if (episodesRes.seasons?.[0]?.episodes?.[0]) {
-            // Charger le premier épisode (le film)
-            const episodeId = episodesRes.seasons[0].episodes[0].id;
-            await this.loadEpisode(episodeId);
-            return;
+        try {
+            const showRes = await api.getShow(showId);
+            
+            if (!showRes || !showRes.data) {
+                throw new Error('Film introuvable');
+            }
+
+            this.showData = showRes.data;
+            const episodesRes = await api.getShowEpisodes(showId);
+            
+            console.log('Episodes response:', episodesRes);
+
+            if (episodesRes.type === 'movie') {
+                if (episodesRes.sources && episodesRes.sources.length > 0) {
+                    this.sources = episodesRes.sources.filter(s => s.is_active);
+                } else {
+                    throw new Error('Aucune source disponible');
+                }
+            } else if (episodesRes.seasons && episodesRes.seasons.length > 0) {
+                const firstEpisode = episodesRes.seasons[0].episodes[0];
+                window.location.href = `player.html?episode=${firstEpisode.id}`;
+                return;
+            }
+
+            if (this.sources.length === 0) {
+                throw new Error('Aucune source active');
+            }
+
+            this.renderPlayer();
+            this.renderSources();
+            
+        } catch (error) {
+            console.error('Erreur loadMovie:', error);
+            throw error;
         }
-        
-        this.renderPlayer();
-        this.renderSources();
     }
 
     renderPlayer() {
-        const container = document.querySelector('.player-container');
-        if (!container) return;
-
         const title = this.episodeData?.title || this.showData?.title || 'Lecture';
         const subtitle = this.episodeData ? 
-            `S${this.episodeData.season_number}E${this.episodeData.episode_number}` : 
+            `S${this.episodeData.season_number || '?'}E${this.episodeData.episode_number || '?'}` : 
             'Film';
 
-        // Mise à jour des infos
-        document.querySelector('.player-title').textContent = title;
-        document.querySelector('.player-meta').textContent = subtitle;
+        const titleEl = document.querySelector('.player-title');
+        const metaEl = document.querySelector('.player-meta');
+        
+        if (titleEl) titleEl.textContent = title;
+        if (metaEl) metaEl.textContent = subtitle;
 
-        // Sélection automatique de la meilleure source
         if (this.sources.length > 0) {
-            // Priorité: Filemoon > Telegram
             const preferred = this.sources.find(s => s.server === 'filemoon') || this.sources[0];
             this.selectSource(preferred.id);
         }
@@ -101,20 +126,26 @@ class PlayerPage {
 
         this.currentSource = source;
         
-        // Mise à jour UI
         document.querySelectorAll('.server-btn').forEach(btn => {
             btn.classList.toggle('active', btn.dataset.sourceId === sourceId);
         });
 
-        // Chargement vidéo
         this.loadVideo(source);
     }
 
     loadVideo(source) {
-        const container = document.querySelector('.player-container');
+        const container = document.getElementById('playerContainer');
+        const loading = document.getElementById('playerLoading');
+        const error = document.getElementById('playerError');
         
-        if (source.server === 'filemoon') {
-            // Filemoon: utiliser iframe
+        if (!container) return;
+
+        if (loading) loading.classList.remove('active');
+        if (error) error.classList.remove('active');
+        
+        console.log('Chargement source:', source);
+
+        if (source.server === 'filemoon' && source.embed_url) {
             container.innerHTML = `
                 <iframe 
                     src="${source.embed_url}" 
@@ -122,20 +153,22 @@ class PlayerPage {
                     height="100%" 
                     frameborder="0" 
                     allowfullscreen
-                    allow="autoplay; encrypted-media"
+                    allow="autoplay; encrypted-media; picture-in-picture"
                     style="position: absolute; top: 0; left: 0; width: 100%; height: 100%;"
                 ></iframe>
             `;
-        } else {
-            // Telegram: utiliser balise video avec notre proxy
+        } else if (source.direct_link) {
+            const posterUrl = this.episodeData?.thumbnail || this.showData?.poster_url || '';
+            
             container.innerHTML = `
                 <video 
                     id="videoPlayer" 
                     class="video-element"
                     controls
                     autoplay
-                    preload="${APP_CONFIG.preload}"
-                    poster="${this.episodeData?.thumbnail || ''}"
+                    preload="metadata"
+                    poster="${posterUrl}"
+                    style="width: 100%; height: 100%; background: #000;"
                 >
                     <source src="${source.direct_link}" type="video/mp4">
                     Votre navigateur ne supporte pas la lecture vidéo.
@@ -143,6 +176,8 @@ class PlayerPage {
             `;
             
             this.setupVideoControls();
+        } else {
+            this.showError('Source invalide');
         }
     }
 
@@ -150,11 +185,12 @@ class PlayerPage {
         const video = document.getElementById('videoPlayer');
         if (!video) return;
 
-        // Sauvegarde de la position
         const saveKey = `progress_${this.episodeId || this.showId}`;
         
         video.addEventListener('timeupdate', () => {
-            localStorage.setItem(saveKey, video.currentTime);
+            if (video.currentTime > 0) {
+                localStorage.setItem(saveKey, video.currentTime);
+            }
         });
 
         video.addEventListener('loadedmetadata', () => {
@@ -164,65 +200,59 @@ class PlayerPage {
             }
         });
 
-        // Marquer comme vu à 90%
-        video.addEventListener('ended', () => {
-            this.markAsWatched();
+        video.addEventListener('error', (e) => {
+            console.error('Erreur vidéo:', e);
+            this.showError('Erreur de lecture. Essayez un autre serveur.');
         });
     }
 
     renderSources() {
-        const container = document.querySelector('.server-buttons');
-        if (!container || this.sources.length <= 1) return;
+        const container = document.getElementById('serverButtons');
+        if (!container || this.sources.length === 0) return;
 
-        container.innerHTML = this.sources.map(source => `
-            <button 
-                class="server-btn ${source.id === this.currentSource?.id ? 'active' : ''}" 
-                data-source-id="${source.id}"
-                onclick="player.selectSource('${source.id}')"
-            >
-                <i class="fas fa-${source.server === 'filemoon' ? 'cloud' : 'paper-plane'}"></i>
-                <div>
-                    <div class="server-name">${source.server === 'filemoon' ? 'Filemoon' : 'Telegram'}</div>
-                    <div class="server-quality">${source.quality || 'HD'}</div>
-                </div>
-            </button>
-        `).join('');
-    }
+        container.innerHTML = this.sources.map(source => {
+            const serverName = source.server === 'filemoon' ? 'Filemoon' : 
+                              source.server === 'telegram' ? 'Telegram' : 'Serveur';
+            
+            const serverIcon = source.server === 'filemoon' ? 'cloud' : 'paper-plane';
 
-    renderEpisodeNav() {
-        // Implémentation navigation épisodes précédent/suivant
-        // Nécessite de connaître la liste complète des épisodes de la saison
-    }
-
-    markAsWatched() {
-        // API call pour marquer comme vu (si authentification implémentée)
-        console.log('Marqué comme vu:', this.episodeId);
+            return `
+                <button 
+                    class="server-btn ${source.id === this.currentSource?.id ? 'active' : ''}" 
+                    data-source-id="${source.id}"
+                    onclick="window.playerInstance.selectSource('${source.id}')"
+                >
+                    <i class="fas fa-${serverIcon}"></i>
+                    <div>
+                        <div class="server-name">${serverName}</div>
+                        <div class="server-quality">${source.quality || 'HD'}</div>
+                    </div>
+                </button>
+            `;
+        }).join('');
     }
 
     showLoading(show) {
-        const overlay = document.getElementById('loadingOverlay');
-        if (overlay) overlay.classList.toggle('active', show);
+        const loading = document.getElementById('playerLoading');
+        if (loading) loading.classList.toggle('active', show);
     }
 
     showError(message) {
-        const container = document.querySelector('.player-container');
-        if (container) {
-            container.innerHTML = `
-                <div class="player-error active">
-                    <i class="fas fa-exclamation-circle"></i>
-                    <h3>Erreur de lecture</h3>
-                    <p>${message}</p>
-                    <button class="btn btn-primary" onclick="location.reload()">
-                        <i class="fas fa-redo"></i> Réessayer
-                    </button>
-                </div>
-            `;
+        const error = document.getElementById('playerError');
+        const loading = document.getElementById('playerLoading');
+        
+        if (loading) loading.classList.remove('active');
+        
+        if (error) {
+            error.classList.add('active');
+            const errorText = error.querySelector('p');
+            if (errorText) errorText.textContent = message;
         }
     }
 }
 
-// Initialisation
-let player;
+window.playerInstance = null;
+
 document.addEventListener('DOMContentLoaded', () => {
-    player = new PlayerPage();
+    window.playerInstance = new PlayerPage();
 });
