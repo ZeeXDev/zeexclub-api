@@ -42,8 +42,19 @@ class Settings(BaseSettings):
     TMDB_BASE_URL: str = "https://api.themoviedb.org/3"
     TMDB_IMAGE_BASE_URL: str = "https://image.tmdb.org/t/p/original"
     
-    # Filemoon - OBLIGATOIRE
-    FILEMOON_API_KEY: str = Field(...)
+    # Byse.sx (NOUVEAU Filemoon 2026) - OBLIGATOIRE
+    BYSE_API_KEY: str = Field(
+        default="",
+        description="Clé API Byse.sx (nouveau Filemoon). Fallback sur FILEMOON_API_KEY si vide."
+    )
+    BYSE_BASE_URL: str = "https://api.byse.sx"
+    BYSE_PLAYER_URL: str = "https://byse.sx/e/"
+    
+    # Filemoon (LEGACY - conservé pour compatibilité)
+    FILEMOON_API_KEY: str = Field(
+        default="",
+        description="[LEGACY] Ancienne clé Filemoon - utilisée comme fallback pour BYSE_API_KEY"
+    )
     FILEMOON_BASE_URL: str = "https://filemoon.sx/api"
     FILEMOON_PLAYER_URL: str = "https://filemoon.sx/e/"
     
@@ -57,6 +68,14 @@ class Settings(BaseSettings):
     # Streaming
     STREAM_BUFFER_SIZE: int = 256 * 1024  # 256KB
     STREAM_TIMEOUT: int = 300  # 5 minutes
+    
+    @property
+    def get_byse_key(self) -> str:
+        """
+        Retourne la clé API Byse.sx.
+        Priorité: BYSE_API_KEY > FILEMOON_API_KEY (legacy)
+        """
+        return self.BYSE_API_KEY or self.FILEMOON_API_KEY
     
     @validator('SUPABASE_KEY')
     def validate_supabase_key(cls, v):
@@ -95,6 +114,11 @@ class Settings(BaseSettings):
             return [int(x.strip()) for x in v.split(',') if x.strip()]
         return v
     
+    @validator('FRONTEND_URL')
+    def clean_frontend_url(cls, v):
+        """Nettoie l'URL frontend (supprime espaces et slash final)"""
+        return v.strip().rstrip('/')
+    
     class Config:
         env_file = ".env"
         case_sensitive = True
@@ -118,20 +142,38 @@ def validate_config():
         "SECRET_KEY",
         "TELEGRAM_BOT_TOKEN",
         "TMDB_API_KEY",
-        "FILEMOON_API_KEY"
     ]
+    
+    # Vérifier soit BYSE_API_KEY soit FILEMOON_API_KEY (au moins un)
+    has_byse_key = bool(settings.BYSE_API_KEY)
+    has_filemoon_key = bool(settings.FILEMOON_API_KEY)
+    
+    if not (has_byse_key or has_filemoon_key):
+        required.append("BYSE_API_KEY (ou FILEMOON_API_KEY legacy)")
     
     missing = [r for r in required if not getattr(settings, r)]
     
     if missing:
         raise ValueError(f"Variables manquantes: {', '.join(missing)}")
     
+    # Log de la configuration Byse.sx
+    import logging
+    logger = logging.getLogger("zeexclub.config")
+    
+    if has_byse_key:
+        logger.info("✅ Configuration Byse.sx active (nouveau Filemoon 2026)")
+        logger.info(f"   API Base: {settings.BYSE_BASE_URL}")
+        logger.info(f"   Player URL: {settings.BYSE_PLAYER_URL}")
+    elif has_filemoon_key:
+        logger.warning("⚠️  Utilisation de FILEMOON_API_KEY legacy (déprécié)")
+        logger.warning("   Migrez vers BYSE_API_KEY dès que possible")
+    
     return True
 
 
 # Constantes métier (pas de secrets ici)
 ALLOWED_VIDEO_TYPES = ['movie', 'series']
-ALLOWED_SERVER_NAMES = ['filemoon', 'telegram']
+ALLOWED_SERVER_NAMES = ['filemoon', 'telegram', 'byse']  # Ajouté 'byse'
 TMDB_MEDIA_TYPES = ['movie', 'tv']
 
 # Regex pour parsing S01E01, Episode 1, etc.
@@ -154,7 +196,7 @@ Commandes disponibles:
 /addf - Créer un sous-dossier/saison
 /view <id> - Voir l'état d'un show
 /docs - Lister tous les shows
-/done - Finaliser l'upload vers Filemoon
+/done - Finaliser l'upload vers Filemoon/Byse.sx
 /help - Aide détaillée
     """,
     'create_start': "🔍 Recherche sur TMDB...",
@@ -163,9 +205,9 @@ Commandes disponibles:
     'add_waiting': "📤 Envoyez la vidéo avec caption (ex: S01E01 ou Episode 1)",
     'add_received': "✅ Vidéo reçue!\nFile ID: `{file_id}`\nCaption: {caption}",
     'addf_prompt': "Choisissez le type de dossier:",
-    'done_start': "🚀 Début de l'upload vers Filemoon...",
+    'done_start': "🚀 Début de l'upload vers Byse.sx...",
     'done_progress': "⏳ Upload en cours... {percent}%",
-    'done_success': "✅ Upload terminé!\nFilemoon Code: `{file_code}`\nLien: {link}",
+    'done_success': "✅ Upload terminé!\nByse Code: `{file_code}`\nLien: {link}",
     'error_generic': "❌ Une erreur est survenue: {error}",
     'error_not_admin': "⛔ Vous n'êtes pas autorisé à utiliser ce bot.",
     'error_no_show': "❌ Show non trouvé. Utilisez /create d'abord.",
