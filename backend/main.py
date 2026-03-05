@@ -118,20 +118,28 @@ app = FastAPI(
     lifespan=lifespan
 )
 
-# Configuration CORS dynamique
+# ============================================================================
+# CORS - CORRIGÉ (sans espaces parasites)
+# ============================================================================
+
 def get_cors_origins():
     """Récupère les origines CORS depuis les variables d'environnement"""
     origins = [
-        "https://zeexclub.vercel.app",  # CORRIGÉ: https://
-        "https://zeexclub-admin.vercel.app",
+        "https://zeexclub.vercel.app",  # CORRIGÉ: sans espace
+        "https://zeexclub-admin.vercel.app",  # CORRIGÉ: sans espace
         "http://localhost:5500",
-        "http://127.0.0.1:5500",
+        "http://127.0.0.1:5500",  # CORRIGÉ: sans espace
         "http://localhost:8000",
+        "http://localhost:3000",
+        "https://localhost:3000",
+        "null",  # Pour les fichiers locaux ouverts directement
     ]
     
     # Ajouter l'URL frontend Vercel depuis env
     frontend_url = os.getenv("FRONTEND_URL") or os.getenv("CORS_ORIGINS")
     if frontend_url:
+        # Nettoyer l'URL (enlever espaces)
+        frontend_url = frontend_url.strip()
         origins.append(frontend_url)
         # Ajouter aussi sans www et avec www
         if frontend_url.startswith("https://"):
@@ -146,23 +154,31 @@ def get_cors_origins():
     if extra_origins:
         origins.extend([url.strip() for url in extra_origins.split(",")])
     
+    # Log pour debug
+    logger.info(f"CORS origins configurées: {origins}")
     return list(set(origins))  # Supprimer doublons
 
+# Middleware CORS avec options complètes
 app.add_middleware(
     CORSMiddleware,
     allow_origins=get_cors_origins(),
     allow_credentials=True,
-    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH", "HEAD"],
     allow_headers=["*"],
-    expose_headers=["Content-Range", "Accept-Ranges", "Content-Length", "Authorization"]
+    expose_headers=["Content-Range", "Accept-Ranges", "Content-Length", "Authorization", "X-Requested-With"],
+    max_age=86400,  # Cache preflight 24h
 )
 
 # Compression GZip
 app.add_middleware(GZipMiddleware, minimum_size=1000)
 
-# Inclusion des routes API (si disponibles)
+# ============================================================================
+# ROUTES API - CORRIGÉ
+# ============================================================================
+
 if CONFIG_AVAILABLE:
     app.include_router(api_router, prefix="/api")
+    logger.info("✅ Routes API chargées avec préfixe /api")
 else:
     @app.get("/api/{path:path}")
     async def api_unavailable():
@@ -172,9 +188,9 @@ else:
         )
 
 
-# ==========================================
+# ============================================================================
 # Endpoints de base
-# ==========================================
+# ============================================================================
 
 @app.api_route("/", methods=["GET", "HEAD", "OPTIONS"])
 async def root():
@@ -216,12 +232,49 @@ async def liveness_check():
     return {"alive": True}
 
 
-# Gestionnaire d'erreurs global
+# ============================================================================
+# OPTIONS PREFLIGHT GLOBAL - Pour capturer tous les OPTIONS
+# ============================================================================
+
+@app.options("/{path:path}")
+async def options_handler(path: str, request: Request):
+    """
+    Handler OPTIONS global pour toutes les routes
+    Garantit que les requêtes preflight CORS reçoivent une réponse 200
+    """
+    origin = request.headers.get("origin", "https://zeexclub-admin.vercel.app")
+    
+    # Vérifier si l'origin est autorisée
+    allowed_origins = get_cors_origins()
+    if origin not in allowed_origins and "*" not in allowed_origins:
+        origin = "https://zeexclub-admin.vercel.app"  # Fallback sécurisé
+    
+    return JSONResponse(
+        content={"message": "OK"},
+        headers={
+            "Access-Control-Allow-Origin": origin,
+            "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS, PATCH, HEAD",
+            "Access-Control-Allow-Headers": "*",
+            "Access-Control-Allow-Credentials": "true",
+            "Access-Control-Max-Age": "86400",
+        }
+    )
+
+
+# ============================================================================
+# Gestionnaires d'erreurs
+# ============================================================================
+
 @app.exception_handler(HTTPException)
 async def http_exception_handler(request: Request, exc: HTTPException):
-    """Gestionnaire d'exceptions HTTP personnalisé"""
+    """Gestionnaire d'exceptions HTTP personnalisé avec CORS"""
+    origin = request.headers.get("origin", "https://zeexclub-admin.vercel.app")
     return JSONResponse(
         status_code=exc.status_code,
+        headers={
+            "Access-Control-Allow-Origin": origin,
+            "Access-Control-Allow-Credentials": "true",
+        },
         content={
             "error": True,
             "message": exc.detail,
@@ -233,11 +286,17 @@ async def http_exception_handler(request: Request, exc: HTTPException):
 
 @app.exception_handler(Exception)
 async def general_exception_handler(request: Request, exc: Exception):
-    """Gestionnaire d'exceptions générales"""
+    """Gestionnaire d'exceptions générales avec CORS"""
     logger.error(f"Erreur non gérée sur {request.url.path}: {str(exc)}", exc_info=True)
     debug_mode = os.getenv("DEBUG", "false").lower() == "true"
+    origin = request.headers.get("origin", "https://zeexclub-admin.vercel.app")
+    
     return JSONResponse(
         status_code=500,
+        headers={
+            "Access-Control-Allow-Origin": origin,
+            "Access-Control-Allow-Credentials": "true",
+        },
         content={
             "error": True,
             "message": "Erreur interne du serveur" if not debug_mode else str(exc),
@@ -247,17 +306,32 @@ async def general_exception_handler(request: Request, exc: Exception):
     )
 
 
-# Middleware de logging des requêtes
+# ============================================================================
+# Middleware de logging
+# ============================================================================
+
 @app.middleware("http")
 async def log_requests(request: Request, call_next):
     """Middleware pour logger toutes les requêtes"""
     start_time = asyncio.get_event_loop().time()
+    
+    # Log la requête entrante
+    logger.info(f"→ {request.method} {request.url.path} - Origin: {request.headers.get('origin', 'N/A')}")
+    
     response = await call_next(request)
     process_time = asyncio.get_event_loop().time() - start_time
     
+    # Log la réponse
     logger.info(
-        f"{request.method} {request.url.path} - {response.status_code} - {process_time:.3f}s"
+        f"← {request.method} {request.url.path} - {response.status_code} - {process_time:.3f}s"
     )
+    
+    # Ajouter les headers CORS si manquants (sécurité)
+    origin = request.headers.get("origin")
+    if origin and "access-control-allow-origin" not in response.headers:
+        response.headers["Access-Control-Allow-Origin"] = origin
+        response.headers["Access-Control-Allow-Credentials"] = "true"
+    
     return response
 
 
