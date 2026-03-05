@@ -578,9 +578,10 @@ async def stream_telegram_file_head(file_id: str):
 # ENDPOINTS BYSE.SX REMOTE UPLOAD (nouveau Filemoon 2026)
 # ============================================================================
 
-# Configuration Byse.sx (anciennement Filemoon)
-BYSE_API_BASE = "https://api.byse.sx"  # Nouveau domaine API [^45^]
-BYSE_PLAYER_BASE = "https://byse.sx/e/"  # Nouveau player URL [^48^]
+# Configuration Byse.sx
+# Note: On ajoute souvent /api à la fin pour la compatibilité avec leur backend
+BYSE_API_BASE = "https://api.byse.sx/api" 
+BYSE_PLAYER_BASE = "https://byse.sx/e/"
 
 @router.post("/upload/remote", response_model=RemoteUploadResponse)
 async def remote_upload_to_byse(
@@ -589,127 +590,142 @@ async def remote_upload_to_byse(
 ):
     """
     Remote upload vers Byse.sx (nouveau Filemoon 2026)
-    
-    Byse.sx est la nouvelle version de Filemoon avec un nouveau domaine API.
-    Documentation: https://byse.sx/api-docs
+    Utilise l'API /remote/add pour mettre le fichier en file d'attente.
     """
     try:
         logger.info(f"=== BYSE.SX REMOTE UPLOAD START ===")
-        logger.info(f"URL source: {request.url}")
-        logger.info(f"Titre: {request.title}")
+        api_key = settings.BYSE_API_KEY or settings.FILEMOON_API_KEY
         
         async with httpx.AsyncClient(timeout=30.0) as client:
-            # Étape 1: Vérifier la clé API avec account/info
-            logger.info("Étape 1: Vérification de la clé API Byse.sx...")
+            # Étape 1: Lancement du remote upload via GET (plus fiable sur Byse)
+            remote_add_url = f"{BYSE_API_BASE}/remote/add"
             
-            account_url = f"{BYSE_API_BASE}/account/info"
-            account_response = await client.get(
-                account_url,
-                params={"key": settings.BYSE_API_KEY or settings.FILEMOON_API_KEY}
-            )
-            
-            logger.info(f"Account check status: {account_response.status_code}")
-            
-            if account_response.status_code != 200:
-                logger.error(f"Clé API invalide: {account_response.text}")
-                raise HTTPException(status_code=502, detail="Clé API Byse.sx invalide ou expirée")
-            
-            try:
-                account_data = account_response.json()
-                logger.info(f"Account info: {account_data.get('status')}")
-            except:
-                logger.warning("Impossible de parser account/info, on continue...")
-            
-            # Étape 2: Lancer le remote upload
-            logger.info("Étape 2: Lancement du remote upload Byse.sx...")
-            
-            remote_upload_url = f"{BYSE_API_BASE}/remote/upload"
-            
-            remote_params = {
-                "key": settings.BYSE_API_KEY or settings.FILEMOON_API_KEY,
-                "url": str(request.url)
+            params = {
+                "key": api_key,
+                "url": str(request.url).strip()
             }
             
-            # Ajouter les métadonnées optionnelles
             if request.title:
-                remote_params["title"] = request.title
-            if request.description:
-                remote_params["description"] = request.description
+                params["title"] = request.title
             if request.folder_id:
-                remote_params["fld_id"] = request.folder_id
+                params["fld_id"] = request.folder_id
+
+            logger.info(f"Appel Byse API: {remote_add_url} pour URL: {request.url}")
             
-            logger.info(f"POST {remote_upload_url}?key=***&url={str(request.url)[:50]}...")
+            response = await client.get(remote_add_url, params=params)
             
-            remote_response = await client.post(
-                remote_upload_url, 
-                data=remote_params,  # form-encoded
-                timeout=60.0
-            )
+            if response.status_code != 200:
+                logger.error(f"Erreur HTTP {response.status_code}: {response.text}")
+                raise HTTPException(status_code=502, detail="Byse.sx a rejeté la requête")
             
-            logger.info(f"Status remote upload: {remote_response.status_code}")
-            
-            if remote_response.status_code != 200:
-                error_text = remote_response.text
-                logger.error(f"Erreur remote upload HTTP {remote_response.status_code}: {error_text[:500]}")
-                raise HTTPException(
-                    status_code=502,
-                    detail=f"Erreur Byse.sx remote upload (HTTP {remote_response.status_code})"
-                )
-            
-            try:
-                remote_data = remote_response.json()
-            except Exception as e:
-                logger.error(f"Réponse invalide: {remote_response.text[:500]}")
-                raise HTTPException(status_code=502, detail="Réponse invalide de Byse.sx")
-            
-            logger.info(f"Réponse remote upload: {remote_data}")
-            
-            # Traitement de la réponse
-            if remote_data.get("status") == "success":
-                result = remote_data.get("result", {})
+            data = response.json()
+            logger.info(f"Réponse API Byse: {data}")
+
+            # Byse retourne souvent '200' comme un entier ou un succès
+            if data.get("status") in [200, "200", "success"]:
+                result = data.get("result", {})
                 
-                file_code = result.get("filecode") or result.get("file_code") or result.get("code")
-                file_id = result.get("file_id") or result.get("id")
-                
-                if not file_code:
-                    logger.error(f"Pas de file_code: {result}")
-                    raise HTTPException(status_code=502, detail="Réponse incomplète")
-                
-                # URLs Byse.sx (nouveau format)
-                player_url = f"{BYSE_PLAYER_BASE}{file_code}"
-                download_url = f"https://byse.sx/d/{file_code}"
-                
-                is_ready = result.get("is_ready", "1")
-                status = "ready" if is_ready == "1" else "processing"
-                
-                logger.info(f"=== SUCCESS === File code: {file_code}")
+                # Le remote upload ne donne pas de file_code immédiatement, 
+                # il donne un ID de tâche (remote_id)
+                remote_id = result.get("id") or result.get("remote_id")
                 
                 return RemoteUploadResponse(
                     success=True,
-                    file_code=file_code,
-                    file_id=file_id,
-                    player_url=player_url,
-                    download_url=download_url,
-                    status=status,
-                    message="Upload terminé" if status == "ready" else "Encodage en cours",
-                    encoding_status="completed" if status == "ready" else "pending"
+                    file_code=None,  # Pas encore généré
+                    file_id=str(remote_id) if remote_id else None,
+                    player_url=None,
+                    download_url=None,
+                    status="processing",
+                    message="Lien ajouté à la file d'attente",
+                    encoding_status="pending"
                 )
             else:
-                error_msg = remote_data.get("msg", "Erreur upload")
+                error_msg = data.get("msg", "Erreur lors de l'ajout de l'URL")
                 return RemoteUploadResponse(
                     success=False,
                     status="error",
                     message=error_msg
                 )
                 
-    except HTTPException:
-        raise
-    except httpx.TimeoutException:
-        raise HTTPException(status_code=504, detail="Timeout Byse.sx")
-    except httpx.RequestError as e:
-        raise HTTPException(status_code=502, detail=f"Erreur réseau: {str(e)}")
     except Exception as e:
-        logger.error(f"Erreur: {str(e)}", exc_info=True)
+        logger.error(f"Erreur remote upload: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/upload/status/{file_code_or_id}", response_model=FileStatusResponse)
+async def check_upload_status(file_code_or_id: str):
+    """
+    Vérifie le statut d'un upload (soit par file_code, soit par remote_id)
+    """
+    try:
+        api_key = settings.BYSE_API_KEY or settings.FILEMOON_API_KEY
+        
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            # On tente d'abord de récupérer les infos comme un fichier fini
+            response = await client.get(
+                f"{BYSE_API_BASE}/file/info",
+                params={"key": api_key, "file_code": file_code_or_id}
+            )
+            
+            data = response.json()
+            
+            if data.get("status") in [200, "200", "success"] and data.get("result"):
+                res = data["result"][0]
+                status_num = res.get("status", "0")
+                
+                status_map = {"1": "ready", "2": "error"}
+                final_status = status_map.get(str(status_num), "processing")
+                
+                return FileStatusResponse(
+                    success=True,
+                    file_code=file_code_or_id,
+                    status=final_status,
+                    file_size=res.get("file_size"),
+                    player_url=f"{BYSE_PLAYER_BASE}{file_code_or_id}",
+                    download_url=f"https://byse.sx/d/{file_code_or_id}",
+                    message="Prêt" if final_status == "ready" else "Traitement..."
+                )
+            
+            return FileStatusResponse(
+                success=True,
+                file_code=file_code_or_id,
+                status="processing",
+                message="Fichier en cours d'acquisition ou d'encodage"
+            )
+                
+    except Exception as e:
+        logger.error(f"Erreur status: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.delete("/upload/file/{file_code}")
+async def delete_byse_file(file_code: str):
+    """Supprimer un fichier de Byse.sx"""
+    try:
+        api_key = settings.BYSE_API_KEY or settings.FILEMOON_API_KEY
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            response = await client.get(
+                f"{BYSE_API_BASE}/file/delete",
+                params={"key": api_key, "file_code": file_code}
+            )
+            data = response.json()
+            return {"success": data.get("status") in [200, "success"], "data": data}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/byse/account/info")
+async def get_byse_account_info():
+    """Infos du compte Byse.sx"""
+    try:
+        api_key = settings.BYSE_API_KEY or settings.FILEMOON_API_KEY
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            response = await client.get(
+                f"{BYSE_API_BASE}/account/info",
+                params={"key": api_key}
+            )
+            return response.json()
+    except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 
