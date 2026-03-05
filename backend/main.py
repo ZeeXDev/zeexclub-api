@@ -119,46 +119,62 @@ app = FastAPI(
 )
 
 # ============================================================================
-# CORS - CORRIGÉ (sans espaces parasites)
+# CORS - CORRIGÉ DÉFINITIVEMENT
 # ============================================================================
 
 def get_cors_origins():
     """Récupère les origines CORS depuis les variables d'environnement"""
+    # URLs de base SANS ESPACES
     origins = [
-        "https://zeexclub.vercel.app",  # CORRIGÉ: sans espace
-        "https://zeexclub-admin.vercel.app",  # CORRIGÉ: sans espace
+        "https://zeexclub.vercel.app",
+        "https://zeexclub-admin.vercel.app",
         "http://localhost:5500",
-        "http://127.0.0.1:5500",  # CORRIGÉ: sans espace
+        "http://127.0.0.1:5500",
         "http://localhost:8000",
         "http://localhost:3000",
         "https://localhost:3000",
-        "null",  # Pour les fichiers locaux ouverts directement
+        "null",
     ]
     
     # Ajouter l'URL frontend Vercel depuis env
     frontend_url = os.getenv("FRONTEND_URL") or os.getenv("CORS_ORIGINS")
     if frontend_url:
-        # Nettoyer l'URL (enlever espaces)
-        frontend_url = frontend_url.strip()
-        origins.append(frontend_url)
-        # Ajouter aussi sans www et avec www
+        # Nettoyer l'URL (enlever espaces et slashs finaux)
+        frontend_url = frontend_url.strip().rstrip('/')
+        if frontend_url and frontend_url not in origins:
+            origins.append(frontend_url)
+        
+        # Variantes www/non-www
         if frontend_url.startswith("https://"):
-            origins.append(frontend_url.replace("https://", "https://www."))
-            origins.append(frontend_url.replace("https://www.", "https://"))
+            www_variant = frontend_url.replace("https://", "https://www.")
+            non_www_variant = frontend_url.replace("https://www.", "https://")
+            if www_variant not in origins:
+                origins.append(www_variant)
+            if non_www_variant not in origins:
+                origins.append(non_www_variant)
         elif frontend_url.startswith("http://"):
-            origins.append(frontend_url.replace("http://", "http://www."))
-            origins.append(frontend_url.replace("http://www.", "http://"))
+            www_variant = frontend_url.replace("http://", "http://www.")
+            non_www_variant = frontend_url.replace("http://www.", "http://")
+            if www_variant not in origins:
+                origins.append(www_variant)
+            if non_www_variant not in origins:
+                origins.append(non_www_variant)
     
-    # Origines supplémentaires depuis env (séparées par virgule)
+    # Origines supplémentaires depuis env
     extra_origins = os.getenv("EXTRA_CORS_ORIGINS", "")
     if extra_origins:
-        origins.extend([url.strip() for url in extra_origins.split(",")])
+        for url in extra_origins.split(","):
+            clean_url = url.strip().rstrip('/')
+            if clean_url and clean_url not in origins:
+                origins.append(clean_url)
     
-    # Log pour debug
+    # Nettoyage final: s'assurer qu'il n'y a aucun espace
+    origins = [url.strip() for url in origins if url.strip()]
+    
     logger.info(f"CORS origins configurées: {origins}")
-    return list(set(origins))  # Supprimer doublons
+    return origins
 
-# Middleware CORS avec options complètes
+# Middleware CORS
 app.add_middleware(
     CORSMiddleware,
     allow_origins=get_cors_origins(),
@@ -166,14 +182,14 @@ app.add_middleware(
     allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH", "HEAD"],
     allow_headers=["*"],
     expose_headers=["Content-Range", "Accept-Ranges", "Content-Length", "Authorization", "X-Requested-With"],
-    max_age=86400,  # Cache preflight 24h
+    max_age=86400,
 )
 
 # Compression GZip
 app.add_middleware(GZipMiddleware, minimum_size=1000)
 
 # ============================================================================
-# ROUTES API - CORRIGÉ
+# ROUTES API
 # ============================================================================
 
 if CONFIG_AVAILABLE:
@@ -233,26 +249,30 @@ async def liveness_check():
 
 
 # ============================================================================
-# OPTIONS PREFLIGHT GLOBAL - Pour capturer tous les OPTIONS
+# OPTIONS PREFLIGHT GLOBAL - CRITIQUE POUR CORS
 # ============================================================================
 
 @app.options("/{path:path}")
 async def options_handler(path: str, request: Request):
     """
-    Handler OPTIONS global pour toutes les routes
-    Garantit que les requêtes preflight CORS reçoivent une réponse 200
+    Handler OPTIONS global pour TOUTES les routes
+    C'est ce qui manquait pour résoudre le CORS !
     """
-    origin = request.headers.get("origin", "https://zeexclub-admin.vercel.app")
+    origin = request.headers.get("origin", "")
+    
+    # Liste des origines autorisées
+    allowed = get_cors_origins()
     
     # Vérifier si l'origin est autorisée
-    allowed_origins = get_cors_origins()
-    if origin not in allowed_origins and "*" not in allowed_origins:
-        origin = "https://zeexclub-admin.vercel.app"  # Fallback sécurisé
+    if origin in allowed or "*" in allowed:
+        allowed_origin = origin
+    else:
+        allowed_origin = "https://zeexclub-admin.vercel.app"
     
     return JSONResponse(
         content={"message": "OK"},
         headers={
-            "Access-Control-Allow-Origin": origin,
+            "Access-Control-Allow-Origin": allowed_origin,
             "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS, PATCH, HEAD",
             "Access-Control-Allow-Headers": "*",
             "Access-Control-Allow-Credentials": "true",
@@ -267,7 +287,7 @@ async def options_handler(path: str, request: Request):
 
 @app.exception_handler(HTTPException)
 async def http_exception_handler(request: Request, exc: HTTPException):
-    """Gestionnaire d'exceptions HTTP personnalisé avec CORS"""
+    """Gestionnaire d'exceptions HTTP avec CORS"""
     origin = request.headers.get("origin", "https://zeexclub-admin.vercel.app")
     return JSONResponse(
         status_code=exc.status_code,
@@ -315,18 +335,14 @@ async def log_requests(request: Request, call_next):
     """Middleware pour logger toutes les requêtes"""
     start_time = asyncio.get_event_loop().time()
     
-    # Log la requête entrante
     logger.info(f"→ {request.method} {request.url.path} - Origin: {request.headers.get('origin', 'N/A')}")
     
     response = await call_next(request)
     process_time = asyncio.get_event_loop().time() - start_time
     
-    # Log la réponse
-    logger.info(
-        f"← {request.method} {request.url.path} - {response.status_code} - {process_time:.3f}s"
-    )
+    logger.info(f"← {request.method} {request.url.path} - {response.status_code} - {process_time:.3f}s")
     
-    # Ajouter les headers CORS si manquants (sécurité)
+    # Ajouter CORS si manquant
     origin = request.headers.get("origin")
     if origin and "access-control-allow-origin" not in response.headers:
         response.headers["Access-Control-Allow-Origin"] = origin
