@@ -1,15 +1,17 @@
 """
 Routes API complètes pour ZeeXClub
-Endpoints REST pour shows, episodes, streaming
+Endpoints REST pour shows, episodes, streaming et Filemoon remote upload
 """
 
 import logging
 import re
+import asyncio
 from typing import List, Optional, Dict, Any
 from uuid import UUID
 
-from fastapi import APIRouter, HTTPException, Query, Depends, Request, Response, Header
+from fastapi import APIRouter, HTTPException, Query, Depends, Request, Response, Header, BackgroundTasks, Body
 from fastapi.responses import StreamingResponse, JSONResponse
+from pydantic import BaseModel, HttpUrl, Field
 import httpx
 
 from config import settings
@@ -28,6 +30,43 @@ router = APIRouter()
 
 # Initialisation du gestionnaire de streaming
 stream_handler = StreamHandler()
+
+
+# ============================================================================
+# MODÈLES Pydantic
+# ============================================================================
+
+class RemoteUploadRequest(BaseModel):
+    """Modèle pour la requête de remote upload"""
+    url: HttpUrl = Field(..., description="URL directe du fichier à uploader")
+    title: Optional[str] = Field(None, max_length=255, description="Titre du fichier")
+    description: Optional[str] = Field(None, description="Description optionnelle")
+    folder_id: Optional[str] = Field(None, description="ID du dossier Filemoon (optionnel)")
+
+
+class RemoteUploadResponse(BaseModel):
+    """Modèle pour la réponse de remote upload"""
+    success: bool
+    file_code: Optional[str] = None
+    file_id: Optional[str] = None
+    player_url: Optional[str] = None
+    download_url: Optional[str] = None
+    status: str
+    message: Optional[str] = None
+    encoding_status: Optional[str] = None
+
+
+class FileStatusResponse(BaseModel):
+    """Modèle pour le statut d'un fichier"""
+    success: bool
+    file_code: str
+    status: str  # ready, processing, error
+    file_size: Optional[int] = None
+    file_duration: Optional[int] = None
+    player_url: Optional[str] = None
+    download_url: Optional[str] = None
+    encoding_status: Optional[str] = None
+    message: Optional[str] = None
 
 
 # ============================================================================
@@ -186,7 +225,7 @@ async def get_show_episodes_endpoint(
             raise HTTPException(status_code=404, detail="Show non trouvé")
         
         if show["type"] == "movie":
-            # 🔧 CORRECTION : Pour les films, récupérer les sources via seasons → episodes
+            # Pour les films, récupérer les sources via seasons → episodes
             from database.queries import get_supabase
             
             try:
@@ -536,6 +575,325 @@ async def stream_telegram_file_head(file_id: str):
 
 
 # ============================================================================
+# ENDPOINTS FILEMOON REMOTE UPLOAD (PRODUCTION)
+# ============================================================================
+
+@router.post("/upload/remote", response_model=RemoteUploadResponse)
+async def remote_upload_to_filemoon(
+    request: RemoteUploadRequest,
+    background_tasks: BackgroundTasks = None
+):
+    """
+    Remote upload vers Filemoon (upload via URL) - PRODUCTION READY
+    
+    Évite le CORS en passant par le backend.
+    Le client envoie l'URL du fichier, le backend gère l'upload vers Filemoon.
+    
+    Flow:
+    1. Récupère le serveur d'upload Filemoon
+    2. Lance le remote upload avec l'URL fournie
+    3. Retourne immédiatement avec file_code pour polling
+    """
+    try:
+        logger.info(f"=== REMOTE UPLOAD START ===")
+        logger.info(f"URL source: {request.url}")
+        logger.info(f"Titre: {request.title}")
+        
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            # Étape 1: Obtenir le serveur d'upload
+            logger.info("Étape 1: Récupération du serveur Filemoon...")
+            
+            server_url = "https://filemoon.sx/api/upload/server"
+            server_params = {"key": settings.FILEMOON_API_KEY}
+            
+            logger.info(f"GET {server_url}?key=***")
+            
+            server_response = await client.get(server_url, params=server_params)
+            
+            logger.info(f"Status serveur: {server_response.status_code}")
+            
+            if server_response.status_code != 200:
+                error_text = server_response.text
+                logger.error(f"Erreur serveur Filemoon HTTP {server_response.status_code}: {error_text}")
+                raise HTTPException(
+                    status_code=502, 
+                    detail=f"Filemoon indisponible (HTTP {server_response.status_code})"
+                )
+            
+            try:
+                server_data = server_response.json()
+            except Exception as e:
+                logger.error(f"Réponse serveur invalide (pas du JSON): {server_response.text[:500]}")
+                raise HTTPException(status_code=502, detail="Réponse invalide de Filemoon")
+            
+            logger.info(f"Réponse serveur: {server_data}")
+            
+            if server_data.get("status") != "success":
+                error_msg = server_data.get("msg", "Erreur inconnue Filemoon")
+                logger.error(f"Filemoon server error: {error_msg}")
+                raise HTTPException(status_code=502, detail=f"Filemoon: {error_msg}")
+            
+            upload_server = server_data.get("result")
+            if not upload_server:
+                logger.error("Aucun serveur d'upload dans la réponse")
+                raise HTTPException(status_code=502, detail="Aucun serveur d'upload disponible")
+            
+            logger.info(f"Serveur obtenu: {upload_server}")
+            
+            # Étape 2: Lancer le remote upload
+            logger.info("Étape 2: Lancement du remote upload...")
+            
+            # Construction de l'URL de remote upload
+            # Format: {server}/api/remote/upload?key={api_key}&url={file_url}
+            remote_upload_endpoint = f"{upload_server}/api/remote/upload"
+            
+            remote_params = {
+                "key": settings.FILEMOON_API_KEY,
+                "url": str(request.url)
+            }
+            
+            # Ajouter les paramètres optionnels
+            if request.folder_id:
+                remote_params["fld_id"] = request.folder_id
+            
+            logger.info(f"GET {remote_upload_endpoint}?key=***&url={str(request.url)[:50]}...")
+            
+            remote_response = await client.get(
+                remote_upload_endpoint, 
+                params=remote_params,
+                timeout=60.0  # Remote upload peut prendre du temps
+            )
+            
+            logger.info(f"Status remote upload: {remote_response.status_code}")
+            
+            if remote_response.status_code != 200:
+                error_text = remote_response.text
+                logger.error(f"Erreur remote upload HTTP {remote_response.status_code}: {error_text[:500]}")
+                raise HTTPException(
+                    status_code=502,
+                    detail=f"Erreur remote upload (HTTP {remote_response.status_code})"
+                )
+            
+            try:
+                remote_data = remote_response.json()
+            except Exception as e:
+                logger.error(f"Réponse remote upload invalide: {remote_response.text[:500]}")
+                raise HTTPException(status_code=502, detail="Réponse invalide du remote upload")
+            
+            logger.info(f"Réponse remote upload: {remote_data}")
+            
+            # Traitement de la réponse
+            if remote_data.get("status") == "success":
+                result = remote_data.get("result", {})
+                
+                # Extraction des données selon la structure Filemoon
+                file_code = result.get("filecode") or result.get("file_code") or result.get("code")
+                file_id = result.get("file_id") or result.get("id")
+                
+                if not file_code:
+                    logger.error(f"Pas de file_code dans la réponse: {result}")
+                    raise HTTPException(status_code=502, detail="Réponse Filemoon incomplète (pas de file_code)")
+                
+                # Construction des URLs
+                player_url = f"{settings.FILEMOON_PLAYER_URL}{file_code}"
+                download_url = f"https://filemoon.sx/d/{file_code}"
+                
+                # Déterminer le statut (peut être "processing" si encodage en cours)
+                is_ready = result.get("is_ready", "1")
+                status = "ready" if is_ready == "1" else "processing"
+                
+                logger.info(f"=== REMOTE UPLOAD SUCCESS ===")
+                logger.info(f"File code: {file_code}")
+                logger.info(f"Status: {status}")
+                logger.info(f"Player URL: {player_url}")
+                
+                return RemoteUploadResponse(
+                    success=True,
+                    file_code=file_code,
+                    file_id=file_id,
+                    player_url=player_url,
+                    download_url=download_url,
+                    status=status,
+                    message="Upload lancé avec succès" if status == "processing" else "Upload terminé",
+                    encoding_status="pending" if status == "processing" else "completed"
+                )
+            else:
+                error_msg = remote_data.get("msg", "Erreur inconnue du remote upload")
+                logger.error(f"Remote upload failed: {error_msg}")
+                return RemoteUploadResponse(
+                    success=False,
+                    status="error",
+                    message=error_msg
+                )
+                
+    except HTTPException:
+        raise
+    except httpx.TimeoutException as e:
+        logger.error(f"Timeout lors du remote upload: {str(e)}")
+        raise HTTPException(status_code=504, detail="Timeout - Le serveur Filemoon met trop de temps à répondre")
+    except httpx.RequestError as e:
+        logger.error(f"Erreur réseau: {str(e)}")
+        raise HTTPException(status_code=502, detail=f"Erreur réseau: {str(e)}")
+    except Exception as e:
+        logger.error(f"Erreur inattendue remote upload: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Erreur interne: {str(e)}")
+
+
+@router.get("/upload/status/{file_code}", response_model=FileStatusResponse)
+async def check_upload_status(file_code: str):
+    """
+    Vérifier le statut d'un fichier sur Filemoon (encoding, etc.)
+    
+    Endpoint Filemoon: /api/file/info
+    """
+    try:
+        logger.info(f"Checking status for file_code: {file_code}")
+        
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            response = await client.get(
+                "https://filemoon.sx/api/file/info",
+                params={
+                    "key": settings.FILEMOON_API_KEY,
+                    "file_code": file_code
+                }
+            )
+            
+            logger.info(f"Status check HTTP {response.status_code}")
+            
+            if response.status_code != 200:
+                raise HTTPException(status_code=502, detail=f"Filemoon indisponible (HTTP {response.status_code})")
+            
+            try:
+                data = response.json()
+            except:
+                logger.error(f"Réponse non-JSON: {response.text[:500]}")
+                raise HTTPException(status_code=502, detail="Réponse invalide de Filemoon")
+            
+            logger.info(f"Status response: {data}")
+            
+            if data.get("status") == "success":
+                result_list = data.get("result", [])
+                if not result_list or not isinstance(result_list, list):
+                    return FileStatusResponse(
+                        success=True,
+                        file_code=file_code,
+                        status="unknown",
+                        message="Aucune info disponible"
+                    )
+                
+                result = result_list[0]  # Premier résultat
+                
+                # Mapping du statut Filemoon
+                # status: 0 = en cours, 1 = prêt, 2 = erreur
+                file_status_num = result.get("status", "0")
+                if file_status_num == "1":
+                    status = "ready"
+                elif file_status_num == "2":
+                    status = "error"
+                else:
+                    status = "processing"
+                
+                return FileStatusResponse(
+                    success=True,
+                    file_code=file_code,
+                    status=status,
+                    file_size=result.get("file_size"),
+                    file_duration=result.get("file_duration"),
+                    player_url=f"{settings.FILEMOON_PLAYER_URL}{file_code}",
+                    download_url=f"https://filemoon.sx/d/{file_code}",
+                    encoding_status=result.get("encoding_status"),
+                    message="Fichier prêt" if status == "ready" else "Encodage en cours..." if status == "processing" else "Erreur d'encodage"
+                )
+            else:
+                error_msg = data.get("msg", "Fichier non trouvé")
+                return FileStatusResponse(
+                    success=False,
+                    file_code=file_code,
+                    status="error",
+                    message=error_msg
+                )
+                
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Erreur check status: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Erreur lors de la vérification: {str(e)}")
+
+
+@router.delete("/upload/file/{file_code}")
+async def delete_filemoon_file(file_code: str):
+    """
+    Supprimer un fichier de Filemoon
+    
+    Endpoint: /api/file/delete
+    """
+    try:
+        logger.info(f"Deleting file: {file_code}")
+        
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            response = await client.get(
+                "https://filemoon.sx/api/file/delete",
+                params={
+                    "key": settings.FILEMOON_API_KEY,
+                    "file_code": file_code
+                }
+            )
+            
+            if response.status_code != 200:
+                raise HTTPException(status_code=502, detail="Filemoon indisponible")
+            
+            data = response.json()
+            
+            if data.get("status") == "success":
+                logger.info(f"File {file_code} deleted successfully")
+                return {
+                    "success": True, 
+                    "message": "Fichier supprimé avec succès",
+                    "file_code": file_code
+                }
+            else:
+                error_msg = data.get("msg", "Erreur de suppression")
+                logger.error(f"Delete failed: {error_msg}")
+                return {
+                    "success": False, 
+                    "message": error_msg,
+                    "file_code": file_code
+                }
+                
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Erreur suppression: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Erreur lors de la suppression: {str(e)}")
+
+
+@router.get("/filemoon/account/info")
+async def get_filemoon_account_info():
+    """
+    Récupère les informations du compte Filemoon
+    Utile pour vérifier que la clé API fonctionne
+    """
+    try:
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            response = await client.get(
+                "https://filemoon.sx/api/account/info",
+                params={"key": settings.FILEMOON_API_KEY}
+            )
+            
+            if response.status_code != 200:
+                raise HTTPException(status_code=502, detail="Filemoon indisponible")
+            
+            data = response.json()
+            return data
+            
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Erreur account info: {str(e)}")
+        raise HTTPException(status_code=500, detail="Erreur lors de la récupération des infos compte")
+
+
+# ============================================================================
 # ENDPOINTS CATALOGUE & DÉCOUVERTE
 # ============================================================================
 
@@ -665,10 +1023,10 @@ async def tmdb_details_proxy(
         raise HTTPException(status_code=502, detail="Erreur TMDB")
 
 
-# Import manquant
-import asyncio
+# ============================================================================
+# FONCTIONS UTILITAIRES (Helpers)
+# ============================================================================
 
-# Fonction helper manquante
 async def get_episode_count_by_season(season_id: str) -> int:
     """Compte le nombre d'épisodes dans une saison"""
     from database.queries import get_supabase
@@ -676,5 +1034,6 @@ async def get_episode_count_by_season(season_id: str) -> int:
         supabase = get_supabase()
         result = supabase.table("episodes").select("id", count="exact").eq("season_id", season_id).execute()
         return result.count if hasattr(result, 'count') else len(result.data)
-    except:
+    except Exception as e:
+        logger.error(f"Erreur comptage épisodes: {e}")
         return 0
